@@ -24,24 +24,29 @@ export default function RoleplayScenario() {
   const [started, setStarted] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
   const [showHint, setShowHint] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startScenario = async () => {
     setStarted(true);
     setLoading(true);
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "roleplay",
-        messages: [],
-        userInput:
-          "The vendor has just connected to the call. Give your opening 2-3 sentence response as the skeptical buyer Alex Chen.",
-      }),
-    });
-    const data = await res.json();
-    const response: string =
-      data.result?.counterpartResponse || "Hello, I appreciate you reaching out...";
-    setMessages([{ role: "assistant", content: response }]);
+    setError(null);
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillType: "roleplay",
+          messages: [],
+          userInput: "The vendor has just connected to the call. Give your opening 2-3 sentence response as the skeptical buyer Alex Chen.",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const response: string = data.result?.counterpartResponse || "Hello, I appreciate you reaching out...";
+      setMessages([{ role: "assistant", content: response }]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start scenario");
+    }
     setLoading(false);
   };
 
@@ -53,20 +58,21 @@ export default function RoleplayScenario() {
     setInput("");
     setLoading(true);
     setShowHint(false);
+    setError(null);
 
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "roleplay",
-        messages: newMessages,
-        userInput: null,
-      }),
-    });
-    const data = await res.json();
-    const response: string =
-      data.result?.counterpartResponse || data.result || "...";
-    setMessages([...newMessages, { role: "assistant", content: response }]);
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drillType: "roleplay", messages: newMessages, userInput: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const response: string = data.result?.counterpartResponse || data.result || "...";
+      setMessages([...newMessages, { role: "assistant", content: response }]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to get response");
+    }
     setLoading(false);
   };
 
@@ -103,6 +109,10 @@ export default function RoleplayScenario() {
         <div className="bg-indigo-900/30 border border-indigo-600/40 rounded-lg p-3 text-sm text-indigo-300">
           💡 {HINTS[(hintIdx - 1 + HINTS.length) % HINTS.length]}
         </div>
+      )}
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
       )}
 
       {!started ? (

@@ -29,6 +29,7 @@ export default function LiveCoachingPanel() {
   const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const transcriptRef = useRef("");
   const lastCoachCallRef = useRef(0);
+  const isActiveRef = useRef(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -99,6 +100,7 @@ export default function LiveCoachingPanel() {
       return;
     }
     setIsStarting(false);
+    isActiveRef.current = true;
     setStatus("active");
     setElapsedSeconds(0);
     setTranscript("");
@@ -150,8 +152,8 @@ export default function LiveCoachingPanel() {
 
     recognition.onend = () => {
       setIsListening(false);
-      // Restart if still active
-      if (status === "active") {
+      // Restart if still active (use ref to avoid stale closure)
+      if (isActiveRef.current) {
         setTimeout(() => startListening(), 500);
       }
     };
@@ -185,6 +187,7 @@ export default function LiveCoachingPanel() {
       });
     }
 
+    isActiveRef.current = false;
     setStatus("idle");
     setIsListening(false);
   };

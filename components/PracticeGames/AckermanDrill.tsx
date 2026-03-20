@@ -25,23 +25,30 @@ export default function AckermanDrill() {
   const [result, setResult] = useState<AckermanResult | null>(null);
   const [offerStep, setOfferStep] = useState(0);
   const [started, setStarted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startDrill = async () => {
     setStarted(true);
     setLoading(true);
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "ackerman",
-        messages: [],
-        userInput: `The scenario is starting. You are the seller asking $${ASKING.toLocaleString()}. Open with your pitch.`,
-      }),
-    });
-    const data = await res.json();
-    const parsed: AckermanResult = data.result;
-    setMessages([{ role: "assistant", content: parsed.sellerResponse }]);
-    setResult(parsed);
+    setError(null);
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillType: "ackerman",
+          messages: [],
+          userInput: `The scenario is starting. You are the seller asking $${ASKING.toLocaleString()}. Open with your pitch.`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const parsed: AckermanResult = data.result;
+      setMessages([{ role: "assistant", content: parsed.sellerResponse }]);
+      setResult(parsed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start drill");
+    }
     setLoading(false);
   };
 
@@ -54,22 +61,23 @@ export default function AckermanDrill() {
     setMessages(newMessages);
     setOfferInput("");
     setLoading(true);
+    setError(null);
 
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "ackerman",
-        messages: newMessages,
-        userInput: null,
-      }),
-    });
-    const data = await res.json();
-    const parsed: AckermanResult = data.result;
-
-    setMessages([...newMessages, { role: "assistant", content: parsed.sellerResponse }]);
-    setResult(parsed);
-    setOfferStep((s) => Math.min(s + 1, ANCHORS.length - 1));
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drillType: "ackerman", messages: newMessages, userInput: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const parsed: AckermanResult = data.result;
+      setMessages([...newMessages, { role: "assistant", content: parsed.sellerResponse }]);
+      setResult(parsed);
+      setOfferStep((s) => Math.min(s + 1, ANCHORS.length - 1));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to get response");
+    }
     setLoading(false);
   };
 
@@ -116,6 +124,10 @@ export default function AckermanDrill() {
           </div>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
+      )}
 
       {!started ? (
         <button

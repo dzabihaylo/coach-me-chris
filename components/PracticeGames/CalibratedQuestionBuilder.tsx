@@ -21,28 +21,31 @@ export default function CalibratedQuestionBuilder() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CalibratedResult | null>(null);
   const [history, setHistory] = useState<CalibratedResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const convert = async (question?: string) => {
     const q = question || input;
     if (!q.trim()) return;
     setLoading(true);
     setResult(null);
+    setError(null);
 
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "calibrated",
-        messages: [],
-        userInput: q,
-      }),
-    });
-    const data = await res.json();
-    const parsed: CalibratedResult = data.result;
-    parsed.original = q;
-    setResult(parsed);
-    setHistory((h) => [parsed, ...h.slice(0, 9)]);
-    setInput("");
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drillType: "calibrated", messages: [], userInput: q }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const parsed: CalibratedResult = data.result;
+      parsed.original = q;
+      setResult(parsed);
+      setHistory((h) => [parsed, ...h.slice(0, 9)]);
+      setInput("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to convert question");
+    }
     setLoading(false);
   };
 
@@ -90,6 +93,10 @@ export default function CalibratedQuestionBuilder() {
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
+      )}
 
       {loading && (
         <div className="bg-gray-800 rounded-lg p-4 animate-pulse text-gray-400 text-sm">

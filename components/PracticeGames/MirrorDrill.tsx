@@ -21,34 +21,32 @@ export default function MirrorDrill() {
   const [result, setResult] = useState<MirrorResult | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [started, setStarted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startDrill = async () => {
     setStarted(true);
     setLoading(true);
-    const starter =
-      "We've been looking at your platform for a few months now, but honestly we're pretty comfortable with our current setup. The switching costs would be substantial.";
-    const initMessages: Message[] = [
-      {
-        role: "user",
-        content:
-          "START: Begin the mirroring drill. Give me your opening statement as the counterpart.",
-      },
-    ];
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "mirror",
-        messages: [],
-        userInput: "Give me your opening statement as the counterpart in a vendor negotiation. Say 1-2 sentences.",
-      }),
-    });
-    const data = await res.json();
-    const parsed: MirrorResult = data.result;
-
-    const assistantContent = parsed.counterpartResponse || starter;
-    setMessages([{ role: "assistant", content: assistantContent }]);
-    setResult(parsed);
+    setError(null);
+    const starter = "We've been looking at your platform for a few months now, but honestly we're pretty comfortable with our current setup. The switching costs would be substantial.";
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillType: "mirror",
+          messages: [],
+          userInput: "Give me your opening statement as the counterpart in a vendor negotiation. Say 1-2 sentences.",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const parsed: MirrorResult = data.result;
+      setMessages([{ role: "assistant", content: parsed.counterpartResponse || starter }]);
+      setResult(parsed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start drill");
+      setMessages([{ role: "assistant", content: starter }]);
+    }
     setLoading(false);
   };
 
@@ -59,30 +57,23 @@ export default function MirrorDrill() {
     setMessages(newMessages);
     setInput("");
     setLoading(true);
+    setError(null);
 
-    const res = await fetch("/api/practice", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drillType: "mirror",
-        messages: newMessages,
-        userInput: null,
-      }),
-    });
-    const data = await res.json();
-    const parsed: MirrorResult = data.result;
-
-    setScore((s) => ({
-      correct: s.correct + (parsed.mirrorCorrect ? 1 : 0),
-      total: s.total + 1,
-    }));
-
-    const assistantMessage: Message = {
-      role: "assistant",
-      content: parsed.counterpartResponse,
-    };
-    setMessages([...newMessages, assistantMessage]);
-    setResult(parsed);
+    try {
+      const res = await fetch("/api/practice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drillType: "mirror", messages: newMessages, userInput: null }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "API error");
+      const parsed: MirrorResult = data.result;
+      setScore((s) => ({ correct: s.correct + (parsed.mirrorCorrect ? 1 : 0), total: s.total + 1 }));
+      setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse }]);
+      setResult(parsed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to get response");
+    }
     setLoading(false);
   };
 
@@ -118,6 +109,10 @@ export default function MirrorDrill() {
             ({Math.round((score.correct / score.total) * 100)}% accuracy)
           </span>
         </div>
+      )}
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
       )}
 
       {!started ? (
