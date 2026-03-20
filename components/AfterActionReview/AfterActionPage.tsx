@@ -69,10 +69,14 @@ export default function AfterActionPage() {
     const res = await fetch(`/api/review/${id}`);
     const data = await res.json();
     if (data.review) {
-      const feedback = JSON.parse(data.review.feedbackJson);
-      setCurrentFeedback(feedback);
-      setCurrentTitle(title);
-      setView("result");
+      try {
+        const feedback = JSON.parse(data.review.feedbackJson);
+        setCurrentFeedback(feedback);
+        setCurrentTitle(title);
+        setView("result");
+      } catch {
+        alert("Could not load review data — it may be corrupted.");
+      }
     }
     setLoadingDetail(false);
   };

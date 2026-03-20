@@ -30,6 +30,7 @@ export default function LiveCoachingPanel() {
   const transcriptRef = useRef("");
   const lastCoachCallRef = useRef(0);
   const isActiveRef = useRef(false);
+  const sessionStartRef = useRef(0);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -101,6 +102,7 @@ export default function LiveCoachingPanel() {
     }
     setIsStarting(false);
     isActiveRef.current = true;
+    sessionStartRef.current = Date.now();
     setStatus("active");
     setElapsedSeconds(0);
     setTranscript("");
@@ -316,7 +318,7 @@ export default function LiveCoachingPanel() {
                 className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-3 py-2"
               >
                 <span className="text-xs text-gray-500 font-mono w-12 shrink-0">
-                  {formatTime(Math.floor((n.timestamp.getTime() - (Date.now() - elapsedSeconds * 1000)) / 1000 + elapsedSeconds))}
+                  {formatTime(Math.floor((n.timestamp.getTime() - sessionStartRef.current) / 1000))}
                 </span>
                 <span className="text-gray-200 text-sm flex-1">{n.nudge}</span>
                 {n.technique && (
