@@ -1,13 +1,12 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
-import { createClient } from "@libsql/client";
+import { PrismaBetterSQLite3 } from "@prisma/adapter-better-sqlite3";
+import Database from "better-sqlite3";
 import path from "path";
 
 function createPrismaClient() {
   const dbPath = path.resolve(process.cwd(), "prisma/dev.db");
-  const libsql = createClient({ url: `file:${dbPath}` });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const adapter = new PrismaLibSql(libsql as any);
+  const sqlite = new Database(dbPath);
+  const adapter = new PrismaBetterSQLite3(sqlite);
   return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
 }
 
