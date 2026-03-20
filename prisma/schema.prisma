@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model CallReview {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now())
+  title           String
+  callDate        DateTime
+  transcriptText  String
+  granolaId       String?
+  durationMinutes Int?
+
+  // Voss dimensions scores (0-10)
+  tacticalEmpathy     Float @default(0)
+  mirroring           Float @default(0)
+  labeling            Float @default(0)
+  calibratedQuestions Float @default(0)
+  thatsRight          Float @default(0)
+  usingNo             Float @default(0)
+  accusationAudit     Float @default(0)
+  lossFraming         Float @default(0)
+  ackermanBargaining  Float @default(0)
+  blackSwanDiscovery  Float @default(0)
+
+  overallScore Float @default(0)
+
+  feedbackJson  String
+  coachingNotes String?
+
+  @@index([callDate])
+}
+
+model PracticeSession {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  drillType   String
+  score       Float    @default(0)
+  rounds      Int      @default(0)
+  notes       String?
+  sessionJson String
+}
+
+model LiveSession {
+  id                 String    @id @default(cuid())
+  startedAt          DateTime  @default(now())
+  endedAt            DateTime?
+  nudgesJson         String    @default("[]")
+  transcriptSnippets String    @default("[]")
+}
