@@ -1,7 +1,34 @@
 import Anthropic from "@anthropic-ai/sdk";
 
+function buildFetch() {
+  const proxyUrl = process.env.GLOBAL_AGENT_HTTP_PROXY;
+  if (!proxyUrl) return undefined;
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  const tunnel = require("tunnel-agent") as any;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  const nodeFetch = (require("node-fetch") as any).default as typeof fetch;
+
+  const parsed = new URL(proxyUrl);
+  const agent = tunnel.httpsOverHttp({
+    proxy: {
+      host: parsed.hostname,
+      port: parseInt(parsed.port),
+      proxyAuth:
+        decodeURIComponent(parsed.username) +
+        ":" +
+        decodeURIComponent(parsed.password),
+    },
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (url: RequestInfo | URL, init?: RequestInit) =>
+    nodeFetch(url as string, { ...(init as object), agent } as any) as Promise<Response>;
+}
+
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
+  fetch: buildFetch(),
 });
 
 export { VOSS_DIMENSIONS } from "./voss";
