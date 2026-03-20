@@ -156,9 +156,14 @@ export default function LiveCoachingPanel() {
       }
     };
 
-    recognition.start();
-    recognitionRef.current = recognition;
-    setIsListening(true);
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+    } catch {
+      // Speech recognition unavailable or already running — continue without mic
+      setSpeechSupported(false);
+    }
   };
 
   const endSession = async () => {
