@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
       throw new Error("Unexpected response type");
     }
 
-    const feedback = JSON.parse(content.text);
+    const raw = content.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const feedback = JSON.parse(raw);
     const d = feedback.dimensionDetails;
 
     const review = await db.callReview.create({

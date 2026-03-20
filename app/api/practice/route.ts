@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
 
     let parsed: Record<string, unknown>;
     if (isStructured) {
-      parsed = JSON.parse(content.text);
+      const raw = content.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+      parsed = JSON.parse(raw);
     } else {
       parsed = { counterpartResponse: content.text };
     }

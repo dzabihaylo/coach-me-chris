@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ nudge: null, technique: null, confidence: 0 });
     }
 
-    const text = content.text.trim();
+    const text = content.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
     const parsed = JSON.parse(text);
     return Response.json(parsed);
   } catch {
