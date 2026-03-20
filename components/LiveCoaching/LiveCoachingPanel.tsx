@@ -20,6 +20,8 @@ export default function LiveCoachingPanel() {
   const [status, setStatus] = useState<"idle" | "active" | "paused">("idle");
   const [manualInput, setManualInput] = useState("");
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -79,13 +81,24 @@ export default function LiveCoachingPanel() {
   }, [sessionId]);
 
   const startSession = async () => {
-    const res = await fetch("/api/live-session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "start" }),
-    });
-    const data = await res.json();
-    setSessionId(data.sessionId);
+    setIsStarting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/live-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start" }),
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+      if (!data.sessionId) throw new Error("No session ID returned");
+      setSessionId(data.sessionId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start session");
+      setIsStarting(false);
+      return;
+    }
+    setIsStarting(false);
     setStatus("active");
     setElapsedSeconds(0);
     setTranscript("");
@@ -213,9 +226,10 @@ export default function LiveCoachingPanel() {
           {status === "idle" ? (
             <button
               onClick={startSession}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg font-semibold transition-colors"
+              disabled={isStarting}
+              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-semibold transition-colors"
             >
-              Start Call
+              {isStarting ? "Starting…" : "Start Call"}
             </button>
           ) : (
             <button
@@ -227,6 +241,13 @@ export default function LiveCoachingPanel() {
           )}
         </div>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Latest Nudge — prominent display */}
       <div className="min-h-[80px]">
