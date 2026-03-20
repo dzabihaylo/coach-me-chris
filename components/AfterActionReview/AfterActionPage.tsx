@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import ReviewForm from "./ReviewForm";
 import ReviewResult from "./ReviewResult";
-import type { ReviewFeedback } from "@/lib/claude";
+import type { ReviewFeedback } from "@/lib/voss";
 import { format } from "date-fns";
 
 interface ReviewSummary {

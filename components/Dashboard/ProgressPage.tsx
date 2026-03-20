@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import ProgressChart from "./ProgressChart";
 import ScoreBar from "@/components/shared/ScoreBar";
-import { VOSS_DIMENSIONS } from "@/lib/claude";
+import { VOSS_DIMENSIONS } from "@/lib/voss";
 
 interface ProgressData {
   totalCalls: number;

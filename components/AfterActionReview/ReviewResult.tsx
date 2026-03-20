@@ -1,8 +1,8 @@
 "use client";
 
 import ScoreBar from "@/components/shared/ScoreBar";
-import { VOSS_DIMENSIONS } from "@/lib/claude";
-import type { ReviewFeedback } from "@/lib/claude";
+import { VOSS_DIMENSIONS } from "@/lib/voss";
+import type { ReviewFeedback } from "@/lib/voss";
 
 interface ReviewResultProps {
   feedback: ReviewFeedback & { overallScore: number };

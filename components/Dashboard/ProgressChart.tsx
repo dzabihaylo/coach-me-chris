@@ -13,7 +13,7 @@ import {
   PolarAngleAxis,
   Radar,
 } from "recharts";
-import { VOSS_DIMENSIONS } from "@/lib/claude";
+import { VOSS_DIMENSIONS } from "@/lib/voss";
 import { format } from "date-fns";
 
 interface CallHistory {
