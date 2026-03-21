@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { anthropic, LIVE_COACHING_SYSTEM_PROMPT } from "@/lib/claude";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ nudge: null, technique: null, confidence: 0 }, { status: 401 });
+  }
+
   const { transcript } = await req.json();
 
   if (!transcript || transcript.trim().length < 10) {

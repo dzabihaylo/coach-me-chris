@@ -7,6 +7,64 @@ datasource db {
   provider = "sqlite"
 }
 
+// ─── Auth models (NextAuth / Auth.js v5) ───────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  callReviews      CallReview[]
+  practiceSessions PracticeSession[]
+  liveSessions     LiveSession[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ─── App models ────────────────────────────────────────────────────────────
+
 model CallReview {
   id              String   @id @default(cuid())
   createdAt       DateTime @default(now())
@@ -15,6 +73,9 @@ model CallReview {
   transcriptText  String
   granolaId       String?
   durationMinutes Int?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Voss dimensions scores (0-10)
   tacticalEmpathy     Float @default(0)
@@ -34,16 +95,22 @@ model CallReview {
   coachingNotes String?
 
   @@index([callDate])
+  @@index([userId])
 }
 
 model PracticeSession {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  drillType   String
-  score       Float    @default(0)
-  rounds      Int      @default(0)
-  notes       String?
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  drillType String
+  score     Float    @default(0)
+  rounds    Int      @default(0)
+  notes     String?
   sessionJson String
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model LiveSession {
@@ -52,4 +119,9 @@ model LiveSession {
   endedAt            DateTime?
   nudgesJson         String    @default("[]")
   transcriptSnippets String    @default("[]")
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

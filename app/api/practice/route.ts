@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { anthropic } from "@/lib/claude";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 const MIRROR_SYSTEM = `You are a negotiation training partner for a mirroring drill. The user is practicing Chris Voss's mirroring technique — repeating the last 2-3 words of what someone says to encourage elaboration.
 
@@ -41,6 +42,12 @@ Your backstory:
 Be realistic — push back, be skeptical, let natural "No" opportunities arise. When the seller uses Voss techniques well, respond authentically. Keep responses to 2-4 sentences.`;
 
 export async function POST(req: NextRequest) {
+  const authSession = await auth();
+  if (!authSession?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = authSession.user.id;
+
   const { drillType, messages, userInput, saveSession } = await req.json();
 
   let systemPrompt = "";
@@ -93,6 +100,7 @@ export async function POST(req: NextRequest) {
       await db.practiceSession.create({
         data: {
           drillType,
+          userId,
           score: (saveSession.score as number) || 0,
           rounds: (saveSession.rounds as number) || conversationMessages.length,
           sessionJson: JSON.stringify({ messages: conversationMessages, result: parsed }),

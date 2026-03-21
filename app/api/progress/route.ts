@@ -1,7 +1,15 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
+
   const reviews = await db.callReview.findMany({
+    where: { userId },
     orderBy: { callDate: "asc" },
     select: {
       id: true,
@@ -22,6 +30,7 @@ export async function GET() {
   });
 
   const practiceSessions = await db.practiceSession.findMany({
+    where: { userId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

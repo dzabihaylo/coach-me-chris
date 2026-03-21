@@ -1,0 +1,22 @@
+{
+  "name": "coach-me-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for querying Coach Me coaching history",
+  "bin": {
+    "coach-me-mcp": "./index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

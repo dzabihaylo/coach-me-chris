@@ -1,8 +1,15 @@
 import { NextRequest } from "next/server";
 import { anthropic, AFTER_ACTION_REVIEW_PROMPT } from "@/lib/claude";
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = session.user.id;
+
   const { title, callDate, transcriptText, granolaId, durationMinutes } =
     await req.json();
 
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest) {
 
     const review = await db.callReview.create({
       data: {
+        userId,
         title: title || "Untitled Call",
         callDate: callDate ? new Date(callDate) : new Date(),
         transcriptText,
@@ -65,7 +73,12 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const reviews = await db.callReview.findMany({
+    where: { userId: session.user.id },
     orderBy: { callDate: "desc" },
     select: {
       id: true,
