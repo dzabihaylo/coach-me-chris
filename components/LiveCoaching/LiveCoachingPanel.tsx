@@ -290,7 +290,10 @@ export default function LiveCoachingPanel() {
               value={manualInput}
               onChange={(e) => setManualInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && e.metaKey) handleManualSubmit();
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleManualSubmit();
+                }
               }}
               placeholder="Paste what was just said..."
               className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 resize-none h-16 focus:outline-none focus:border-emerald-500"
