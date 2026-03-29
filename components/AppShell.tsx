@@ -22,9 +22,10 @@ interface Props {
     email?: string | null;
     image?: string | null;
   };
+  isAdmin?: boolean;
 }
 
-export default function AppShell({ user }: Props) {
+export default function AppShell({ user, isAdmin }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("live");
 
   return (
@@ -43,7 +44,17 @@ export default function AppShell({ user }: Props) {
               </p>
             </div>
           </div>
-          <UserMenu name={user.name} email={user.email} image={user.image} />
+          <div className="flex items-center gap-3">
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              >
+                Admin
+              </a>
+            )}
+            <UserMenu name={user.name} email={user.email} image={user.image} />
+          </div>
         </div>
       </header>
 

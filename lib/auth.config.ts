@@ -4,10 +4,10 @@ import type { NextAuthConfig } from "next-auth";
 // Used by proxy to check sessions without hitting the database.
 export const authConfig: NextAuthConfig = {
   trustHost: true,
-  session: { strategy: "jwt" },
   providers: [], // providers added in lib/auth.ts (Node.js only)
   pages: {
     signIn: "/auth/signin",
+    error: "/auth/signin",
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {

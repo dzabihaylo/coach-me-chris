@@ -63,6 +63,16 @@ model VerificationToken {
   @@id([identifier, token])
 }
 
+// ─── Access control ────────────────────────────────────────────────────────
+
+model AllowedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("user") // "user" or "admin"
+  createdAt DateTime @default(now())
+  addedBy   String?  // email of admin who added this entry
+}
+
 // ─── App models ────────────────────────────────────────────────────────────
 
 model CallReview {

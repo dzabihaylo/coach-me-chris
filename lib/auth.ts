@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { db } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
@@ -8,40 +8,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   trustHost: true,
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt" },
   providers: [
-    Credentials({
-      name: "Email",
-      credentials: {
-        email: { label: "Email", type: "email", placeholder: "you@example.com" },
-      },
-      async authorize(credentials) {
-        const email = credentials?.email as string | undefined;
-        if (!email) return null;
-
-        // Find or create user
-        let user = await db.user.findUnique({ where: { email } });
-        if (!user) {
-          user = await db.user.create({
-            data: { email, name: email.split("@")[0] },
-          });
-        }
-        return { id: user.id, email: user.email, name: user.name };
-      },
+    Resend({
+      apiKey: process.env.AUTH_RESEND_KEY,
+      from: process.env.EMAIL_FROM ?? "Coach Me Chris <onboarding@resend.dev>",
     }),
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
+    async signIn({ user }) {
+      if (!user.email) return false;
+      const allowed = await db.allowedEmail.findUnique({
+        where: { email: user.email.toLowerCase() },
+      });
+      return !!allowed;
     },
-    async session({ session, token }) {
-      if (token?.id) {
-        session.user.id = token.id as string;
-      }
+    session({ session, user }) {
+      session.user.id = user.id;
       return session;
     },
   },

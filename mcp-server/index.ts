@@ -200,6 +200,64 @@ server.tool(
   }
 );
 
+// ─── Tool: manage whitelist ──────────────────────────────────────────────────
+server.tool(
+  "manage_whitelist",
+  "List, add, or remove emails from the Coach Me Chris access whitelist",
+  {
+    action: z.enum(["list", "add", "remove"]).describe("Action to perform"),
+    email: z.string().optional().describe("Email address (required for add/remove)"),
+    role: z.enum(["user", "admin"]).default("user").optional().describe("Role for new entry (add only)"),
+  },
+  async ({ action, email, role }) => {
+    if (action === "list") {
+      const result = await db.execute({
+        sql: `SELECT id, email, role, createdAt, addedBy FROM AllowedEmail ORDER BY createdAt DESC`,
+        args: [],
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }],
+      };
+    }
+
+    if (!email) {
+      return { content: [{ type: "text", text: "Error: email is required for add/remove" }] };
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    if (action === "add") {
+      const existing = await db.execute({
+        sql: `SELECT id FROM AllowedEmail WHERE email = ?`,
+        args: [normalizedEmail],
+      });
+      if (existing.rows.length > 0) {
+        return { content: [{ type: "text", text: `${normalizedEmail} is already whitelisted` }] };
+      }
+      const id = `mcp-${Date.now()}`;
+      await db.execute({
+        sql: `INSERT INTO AllowedEmail (id, email, role, addedBy) VALUES (?, ?, ?, ?)`,
+        args: [id, normalizedEmail, role ?? "user", "mcp-server"],
+      });
+      return {
+        content: [{ type: "text", text: `Added ${normalizedEmail} as ${role ?? "user"}` }],
+      };
+    }
+
+    if (action === "remove") {
+      await db.execute({
+        sql: `DELETE FROM AllowedEmail WHERE email = ?`,
+        args: [normalizedEmail],
+      });
+      return {
+        content: [{ type: "text", text: `Removed ${normalizedEmail} from whitelist` }],
+      };
+    }
+
+    return { content: [{ type: "text", text: "Unknown action" }] };
+  }
+);
+
 // ─── Start ───────────────────────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);
