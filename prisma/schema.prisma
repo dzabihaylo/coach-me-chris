@@ -73,6 +73,21 @@ model AllowedEmail {
   addedBy   String?  // email of admin who added this entry
 }
 
+// ─── Granola meeting cache ──────────────────────────────────────────────────
+
+model GranolaMeeting {
+  id             String   @id // Granola meeting UUID
+  title          String
+  date           DateTime
+  participants   String   @default("[]") // JSON array of participant names/emails
+  transcript     String?  // full transcript, null until fetched
+  durationMinutes Int?
+  syncedAt       DateTime @default(now())
+  reviewId       String?  // linked CallReview ID if already analyzed
+
+  @@index([date])
+}
+
 // ─── App models ────────────────────────────────────────────────────────────
 
 model CallReview {

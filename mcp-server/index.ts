@@ -258,6 +258,117 @@ server.tool(
   }
 );
 
+// ─── Tool: sync Granola meetings ─────────────────────────────────────────────
+server.tool(
+  "sync_granola_meetings",
+  "Cache Granola meeting metadata into Coach Me Chris so they appear in the web UI meeting picker. Call this with meeting data fetched from the Granola MCP tools. Can also store the transcript if provided.",
+  {
+    meetings: z
+      .array(
+        z.object({
+          id: z.string().describe("Granola meeting UUID"),
+          title: z.string(),
+          date: z.string().describe("ISO date string"),
+          participants: z.array(z.string()).optional().describe("Participant names or emails"),
+          durationMinutes: z.number().optional(),
+          transcript: z.string().optional().describe("Full meeting transcript if available"),
+        })
+      )
+      .describe("Array of Granola meetings to sync"),
+  },
+  async ({ meetings }) => {
+    let synced = 0;
+    let updated = 0;
+    for (const m of meetings) {
+      const existing = await db.execute({
+        sql: `SELECT id, transcript FROM GranolaMeeting WHERE id = ?`,
+        args: [m.id],
+      });
+      if (existing.rows.length > 0) {
+        // Update if we now have a transcript and didn't before
+        if (m.transcript && !existing.rows[0].transcript) {
+          await db.execute({
+            sql: `UPDATE GranolaMeeting SET transcript = ?, syncedAt = datetime('now') WHERE id = ?`,
+            args: [m.transcript, m.id],
+          });
+          updated++;
+        }
+        continue;
+      }
+      await db.execute({
+        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          m.id,
+          m.title,
+          m.date,
+          JSON.stringify(m.participants ?? []),
+          m.durationMinutes ?? null,
+          m.transcript ?? null,
+        ],
+      });
+      synced++;
+    }
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Synced ${synced} new meeting(s), updated ${updated} transcript(s). Total in request: ${meetings.length}.`,
+        },
+      ],
+    };
+  }
+);
+
+// ─── Tool: import Granola meeting for analysis ───────────────────────────────
+server.tool(
+  "import_granola_for_review",
+  "Import a Granola meeting transcript and create an after-action review in Coach Me Chris. The transcript will be analyzed by Claude for Voss dimension scoring. Provide the meeting data from the Granola MCP tools.",
+  {
+    granola_id: z.string().describe("Granola meeting UUID"),
+    title: z.string().describe("Meeting title"),
+    date: z.string().describe("ISO date string"),
+    transcript: z.string().min(50).describe("Full meeting transcript"),
+    participants: z.array(z.string()).optional(),
+    durationMinutes: z.number().optional(),
+  },
+  async ({ granola_id, title, date, transcript, participants, durationMinutes }) => {
+    // Cache the meeting
+    const existing = await db.execute({
+      sql: `SELECT id FROM GranolaMeeting WHERE id = ?`,
+      args: [granola_id],
+    });
+    if (existing.rows.length === 0) {
+      await db.execute({
+        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          granola_id,
+          title,
+          date,
+          JSON.stringify(participants ?? []),
+          durationMinutes ?? null,
+          transcript,
+        ],
+      });
+    } else {
+      await db.execute({
+        sql: `UPDATE GranolaMeeting SET transcript = ?, syncedAt = datetime('now') WHERE id = ?`,
+        args: [transcript, granola_id],
+      });
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Meeting "${title}" cached with transcript (${transcript.length} chars). To complete the review, open Coach Me Chris → After-Action Review → Import from Granola, and select this meeting. Or create the review via the /api/review endpoint with granolaId: "${granola_id}".`,
+        },
+      ],
+    };
+  }
+);
+
 // ─── Start ───────────────────────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);

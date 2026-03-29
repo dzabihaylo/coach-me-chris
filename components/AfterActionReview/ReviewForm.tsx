@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ReviewFormProps {
   onSubmit: (data: {
@@ -10,15 +10,32 @@ interface ReviewFormProps {
     durationMinutes?: number;
   }) => void;
   isLoading: boolean;
+  prefill?: {
+    title: string;
+    callDate: string;
+    transcriptText: string;
+    durationMinutes?: number;
+  };
 }
 
-export default function ReviewForm({ onSubmit, isLoading }: ReviewFormProps) {
-  const [title, setTitle] = useState("");
+export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormProps) {
+  const [title, setTitle] = useState(prefill?.title ?? "");
   const [callDate, setCallDate] = useState(
-    new Date().toISOString().split("T")[0]
+    prefill?.callDate ?? new Date().toISOString().split("T")[0]
   );
-  const [transcriptText, setTranscriptText] = useState("");
-  const [duration, setDuration] = useState("");
+  const [transcriptText, setTranscriptText] = useState(prefill?.transcriptText ?? "");
+  const [duration, setDuration] = useState(
+    prefill?.durationMinutes?.toString() ?? ""
+  );
+
+  useEffect(() => {
+    if (prefill) {
+      setTitle(prefill.title);
+      setCallDate(prefill.callDate);
+      setTranscriptText(prefill.transcriptText);
+      if (prefill.durationMinutes) setDuration(prefill.durationMinutes.toString());
+    }
+  }, [prefill]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +50,12 @@ export default function ReviewForm({ onSubmit, isLoading }: ReviewFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {prefill && (
+        <div className="bg-emerald-900/20 border border-emerald-800/50 rounded-lg px-3 py-2 text-emerald-400 text-sm">
+          Imported from Granola. Review the transcript below and click Analyze.
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-gray-400 mb-1 block">Call Title</label>

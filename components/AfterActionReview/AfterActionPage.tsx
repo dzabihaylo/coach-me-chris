@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import ReviewForm from "./ReviewForm";
 import ReviewResult from "./ReviewResult";
+import GranolaPicker from "./GranolaPicker";
 import type { ReviewFeedback } from "@/lib/voss";
 import { format } from "date-fns";
 
@@ -18,7 +19,7 @@ interface FullFeedback extends ReviewFeedback {
 }
 
 export default function AfterActionPage() {
-  const [view, setView] = useState<"list" | "new" | "result">("list");
+  const [view, setView] = useState<"list" | "new" | "granola" | "result">("list");
   const [reviews, setReviews] = useState<ReviewSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState<FullFeedback | null>(null);
@@ -34,6 +35,25 @@ export default function AfterActionPage() {
     const res = await fetch("/api/review");
     const data = await res.json();
     setReviews(data.reviews || []);
+  };
+
+  const [granolaImport, setGranolaImport] = useState<{
+    title: string;
+    callDate: string;
+    transcriptText: string;
+    durationMinutes?: number;
+    granolaId: string;
+  } | null>(null);
+
+  const handleGranolaImport = (data: {
+    title: string;
+    callDate: string;
+    transcriptText: string;
+    durationMinutes?: number;
+    granolaId: string;
+  }) => {
+    setGranolaImport(data);
+    setView("new");
   };
 
   const handleSubmit = async (formData: {
@@ -109,6 +129,16 @@ export default function AfterActionPage() {
           >
             + New Review
           </button>
+          <button
+            onClick={() => setView("granola")}
+            className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+              view === "granola"
+                ? "bg-gray-700 text-white"
+                : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Import from Granola
+          </button>
           {view === "result" && (
             <button
               className="text-sm px-3 py-1.5 rounded-lg bg-gray-700 text-white"
@@ -175,12 +205,26 @@ export default function AfterActionPage() {
         </div>
       )}
 
+      {view === "granola" && (
+        <GranolaPicker
+          onImport={handleGranolaImport}
+          onCancel={() => setView("list")}
+        />
+      )}
+
       {view === "new" && (
         <div>
           <h2 className="text-gray-300 font-semibold mb-4">
-            Analyze a Call
+            {granolaImport ? `Review: ${granolaImport.title}` : "Analyze a Call"}
           </h2>
-          <ReviewForm onSubmit={handleSubmit} isLoading={isLoading} />
+          <ReviewForm
+            onSubmit={(data) => {
+              handleSubmit(data);
+              setGranolaImport(null);
+            }}
+            isLoading={isLoading}
+            prefill={granolaImport ?? undefined}
+          />
         </div>
       )}
 
