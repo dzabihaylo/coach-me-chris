@@ -1,8 +1,9 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth.config";
 
-// Use the edge-compatible config (no Prisma/Node imports)
-export default NextAuth(authConfig).auth;
+const { auth } = NextAuth(authConfig);
+
+export const proxy = auth;
 
 export const config = {
   matcher: [
