@@ -9,6 +9,7 @@ export async function GET() {
   }
 
   const meetings = await db.granolaMeeting.findMany({
+    where: { userId: session.user.id },
     orderBy: { date: "desc" },
     take: 50,
   });
@@ -38,12 +39,12 @@ export async function POST(req: Request) {
     return Response.json({ error: "meetingId required" }, { status: 400 });
   }
 
-  const meeting = await db.granolaMeeting.findUnique({
-    where: { id: meetingId },
+  const meeting = await db.granolaMeeting.findFirst({
+    where: { id: meetingId, userId: session.user.id },
   });
 
   if (!meeting) {
-    return Response.json({ error: "Meeting not found in cache" }, { status: 404 });
+    return Response.json({ error: "Meeting not found" }, { status: 404 });
   }
 
   return Response.json({
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     title: meeting.title,
     date: meeting.date,
     transcript: meeting.transcript,
-    participants: JSON.parse(meeting.participants),
+    participants: safeJsonParse(meeting.participants, []),
     durationMinutes: meeting.durationMinutes,
   });
 }

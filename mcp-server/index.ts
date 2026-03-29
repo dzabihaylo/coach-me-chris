@@ -263,11 +263,21 @@ server.tool(
   }
 );
 
+// Helper: resolve user email to userId
+async function resolveUserId(email: string): Promise<string | null> {
+  const result = await db.execute({
+    sql: `SELECT id FROM User WHERE email = ?`,
+    args: [email.toLowerCase().trim()],
+  });
+  return result.rows.length > 0 ? (result.rows[0].id as string) : null;
+}
+
 // ─── Tool: sync Granola meetings ─────────────────────────────────────────────
 server.tool(
   "sync_granola_meetings",
-  "Cache Granola meeting metadata into Coach Me Chris so they appear in the web UI meeting picker. Call this with meeting data fetched from the Granola MCP tools. Can also store the transcript if provided.",
+  "Cache Granola meeting metadata into Coach Me Chris so they appear in the web UI meeting picker. Call this with meeting data fetched from the Granola MCP tools. Can also store the transcript if provided. Requires user_email to scope meetings to a specific user.",
   {
+    user_email: z.string().describe("Email of the user whose Granola meetings these are"),
     meetings: z
       .array(
         z.object({
@@ -281,16 +291,20 @@ server.tool(
       )
       .describe("Array of Granola meetings to sync"),
   },
-  async ({ meetings }) => {
+  async ({ user_email, meetings }) => {
+    const userId = await resolveUserId(user_email);
+    if (!userId) {
+      return { content: [{ type: "text", text: `Error: no user found for ${user_email}` }] };
+    }
+
     let synced = 0;
     let updated = 0;
     for (const m of meetings) {
       const existing = await db.execute({
-        sql: `SELECT id, transcript FROM GranolaMeeting WHERE id = ?`,
-        args: [m.id],
+        sql: `SELECT id, transcript FROM GranolaMeeting WHERE id = ? AND userId = ?`,
+        args: [m.id, userId],
       });
       if (existing.rows.length > 0) {
-        // Update if we now have a transcript and didn't before
         if (m.transcript && !existing.rows[0].transcript) {
           await db.execute({
             sql: `UPDATE GranolaMeeting SET transcript = ?, syncedAt = datetime('now') WHERE id = ?`,
@@ -301,8 +315,8 @@ server.tool(
         continue;
       }
       await db.execute({
-        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript, userId)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [
           m.id,
           m.title,
@@ -310,6 +324,7 @@ server.tool(
           JSON.stringify(m.participants ?? []),
           m.durationMinutes ?? null,
           m.transcript ?? null,
+          userId,
         ],
       });
       synced++;
@@ -318,7 +333,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Synced ${synced} new meeting(s), updated ${updated} transcript(s). Total in request: ${meetings.length}.`,
+          text: `Synced ${synced} new meeting(s), updated ${updated} transcript(s) for ${user_email}. Total in request: ${meetings.length}.`,
         },
       ],
     };
@@ -328,8 +343,9 @@ server.tool(
 // ─── Tool: import Granola meeting for analysis ───────────────────────────────
 server.tool(
   "import_granola_for_review",
-  "Import a Granola meeting transcript and create an after-action review in Coach Me Chris. The transcript will be analyzed by Claude for Voss dimension scoring. Provide the meeting data from the Granola MCP tools.",
+  "Import a Granola meeting transcript and cache it in Coach Me Chris for the specified user. The user can then analyze it from the web UI. Requires user_email to scope to the correct user.",
   {
+    user_email: z.string().describe("Email of the user whose meeting this is"),
     granola_id: z.string().describe("Granola meeting UUID"),
     title: z.string().describe("Meeting title"),
     date: z.string().describe("ISO date string"),
@@ -337,16 +353,20 @@ server.tool(
     participants: z.array(z.string()).optional(),
     durationMinutes: z.number().optional(),
   },
-  async ({ granola_id, title, date, transcript, participants, durationMinutes }) => {
-    // Cache the meeting
+  async ({ user_email, granola_id, title, date, transcript, participants, durationMinutes }) => {
+    const userId = await resolveUserId(user_email);
+    if (!userId) {
+      return { content: [{ type: "text", text: `Error: no user found for ${user_email}` }] };
+    }
+
     const existing = await db.execute({
-      sql: `SELECT id FROM GranolaMeeting WHERE id = ?`,
-      args: [granola_id],
+      sql: `SELECT id FROM GranolaMeeting WHERE id = ? AND userId = ?`,
+      args: [granola_id, userId],
     });
     if (existing.rows.length === 0) {
       await db.execute({
-        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript)
-              VALUES (?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO GranolaMeeting (id, title, date, participants, durationMinutes, transcript, userId)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [
           granola_id,
           title,
@@ -354,6 +374,7 @@ server.tool(
           JSON.stringify(participants ?? []),
           durationMinutes ?? null,
           transcript,
+          userId,
         ],
       });
     } else {
@@ -367,7 +388,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: `Meeting "${title}" cached with transcript (${transcript.length} chars). To complete the review, open Coach Me Chris → After-Action Review → Import from Granola, and select this meeting. Or create the review via the /api/review endpoint with granolaId: "${granola_id}".`,
+          text: `Meeting "${title}" cached with transcript (${transcript.length} chars) for ${user_email}. They can now analyze it from After-Action Review → Import from Granola.`,
         },
       ],
     };

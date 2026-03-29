@@ -23,6 +23,7 @@ model User {
   callReviews      CallReview[]
   practiceSessions PracticeSession[]
   liveSessions     LiveSession[]
+  granolaMeetings  GranolaMeeting[]
 }
 
 model Account {
@@ -96,7 +97,11 @@ model GranolaMeeting {
   syncedAt       DateTime @default(now())
   reviewId       String?  // linked CallReview ID if already analyzed
 
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([date])
+  @@index([userId])
 }
 
 // ─── App models ────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import RecordingUpload from "./RecordingUpload";
 
 interface ReviewFormProps {
   onSubmit: (data: {
@@ -77,6 +78,16 @@ export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormP
           />
         </div>
       </div>
+
+      {/* Recording upload */}
+      {!prefill && (
+        <RecordingUpload
+          onTranscriptReady={({ transcript, durationMinutes }) => {
+            setTranscriptText(transcript);
+            if (durationMinutes) setDuration(durationMinutes.toString());
+          }}
+        />
+      )}
 
       <div>
         <label className="text-xs text-gray-400 mb-1 block">
