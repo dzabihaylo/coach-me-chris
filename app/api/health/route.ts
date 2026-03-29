@@ -1,21 +1,30 @@
-import { db } from "@/lib/db";
-
 export async function GET() {
+  const url = process.env.DATABASE_URL ?? "";
+  const token = process.env.DATABASE_AUTH_TOKEN ?? "";
+
   try {
-    const userCount = await db.user.count();
+    // Test raw libsql connection first
+    const { PrismaClient } = await import("@prisma/client");
+    const { PrismaLibSql } = await import("@prisma/adapter-libsql");
+
+    const adapter = new PrismaLibSql({ url, authToken: token });
+    const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
+    const userCount = await prisma.user.count();
+
     return Response.json({
       status: "ok",
       database: "connected",
       userCount,
-      dbUrl: (process.env.DATABASE_URL ?? "").substring(0, 20) + "...",
+      urlPrefix: url.substring(0, 25),
+      hasToken: token.length > 0,
     });
   } catch (e) {
     return Response.json(
       {
         status: "error",
-        database: "failed",
         error: String(e),
-        dbUrl: (process.env.DATABASE_URL ?? "").substring(0, 20) + "...",
+        urlPrefix: url.substring(0, 25),
+        hasToken: token.length > 0,
       },
       { status: 500 }
     );
