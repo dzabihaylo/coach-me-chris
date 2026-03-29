@@ -16,7 +16,6 @@
     "@prisma/adapter-better-sqlite3": "^7.5.0",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",
-    "@vercel/blob": "^2.3.2",
     "better-sqlite3": "^12.8.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",

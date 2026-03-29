@@ -11,7 +11,7 @@ interface Props {
   }) => void;
 }
 
-type Stage = "idle" | "uploading" | "transcribing" | "done" | "error";
+type Stage = "idle" | "processing" | "done" | "error";
 
 export default function RecordingUpload({ onTranscriptReady }: Props) {
   const [stage, setStage] = useState<Stage>("idle");
@@ -21,41 +21,17 @@ export default function RecordingUpload({ onTranscriptReady }: Props) {
 
   async function handleFile(file: File) {
     setError("");
-
-    // Upload
-    setStage("uploading");
-    setProgress(`Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)...`);
+    setStage("processing");
+    setProgress(`Uploading and transcribing ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)...`);
 
     const formData = new FormData();
     formData.append("file", file);
 
-    let uploadResult;
     try {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Upload failed");
-      }
-      uploadResult = await res.json();
-    } catch (e) {
-      setStage("error");
-      setError(e instanceof Error ? e.message : "Upload failed");
-      return;
-    }
-
-    // Transcribe
-    setStage("transcribing");
-    setProgress("Transcribing with speaker detection... This may take a minute.");
-
-    try {
-      const res = await fetch("/api/transcribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: uploadResult.url }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Transcription failed");
       }
       const data = await res.json();
 
@@ -89,8 +65,6 @@ export default function RecordingUpload({ onTranscriptReady }: Props) {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
   }
-
-  const isProcessing = stage === "uploading" || stage === "transcribing";
 
   return (
     <div>
@@ -127,12 +101,12 @@ export default function RecordingUpload({ onTranscriptReady }: Props) {
         </div>
       )}
 
-      {isProcessing && (
+      {stage === "processing" && (
         <div className="border border-gray-700 rounded-xl p-6 text-center">
           <Loader2 size={24} className="text-emerald-400 animate-spin mx-auto mb-3" />
           <p className="text-gray-300 text-sm font-medium">{progress}</p>
           <p className="text-gray-600 text-xs mt-1">
-            {stage === "uploading" ? "Step 1 of 2" : "Step 2 of 2 — transcribing with Deepgram"}
+            Transcribing with speaker detection — this may take a minute for long recordings
           </p>
         </div>
       )}
