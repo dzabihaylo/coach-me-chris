@@ -208,7 +208,7 @@ server.tool(
 // ─── Tool: manage whitelist ──────────────────────────────────────────────────
 server.tool(
   "manage_whitelist",
-  "List, add, or remove emails from the Coach Me Chris access whitelist",
+  "List, add, or remove emails from the Coach Chris access whitelist",
   {
     action: z.enum(["list", "add", "remove"]).describe("Action to perform"),
     email: z.string().optional().describe("Email address (required for add/remove)"),
@@ -275,7 +275,7 @@ async function resolveUserId(email: string): Promise<string | null> {
 // ─── Tool: sync Granola meetings ─────────────────────────────────────────────
 server.tool(
   "sync_granola_meetings",
-  "Cache Granola meeting metadata into Coach Me Chris so they appear in the web UI meeting picker. Call this with meeting data fetched from the Granola MCP tools. Can also store the transcript if provided. Requires user_email to scope meetings to a specific user.",
+  "Cache Granola meeting metadata into Coach Chris so they appear in the web UI meeting picker. Call this with meeting data fetched from the Granola MCP tools. Can also store the transcript if provided. Requires user_email to scope meetings to a specific user.",
   {
     user_email: z.string().describe("Email of the user whose Granola meetings these are"),
     meetings: z
@@ -343,7 +343,7 @@ server.tool(
 // ─── Tool: import Granola meeting for analysis ───────────────────────────────
 server.tool(
   "import_granola_for_review",
-  "Import a Granola meeting transcript and cache it in Coach Me Chris for the specified user. The user can then analyze it from the web UI. Requires user_email to scope to the correct user.",
+  "Import a Granola meeting transcript and cache it in Coach Chris for the specified user. The user can then analyze it from the web UI. Requires user_email to scope to the correct user.",
   {
     user_email: z.string().describe("Email of the user whose meeting this is"),
     granola_id: z.string().describe("Granola meeting UUID"),

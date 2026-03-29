@@ -19,7 +19,7 @@ export default async function SignInPage({
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">🤝</div>
-          <h1 className="text-white font-bold text-2xl">Coach Me Chris</h1>
+          <h1 className="text-white font-bold text-2xl">Coach Chris</h1>
           <p className="text-gray-500 text-sm mt-1">
             Never Split the Difference — live coaching
           </p>

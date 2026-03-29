@@ -37,7 +37,7 @@ export default function AppShell({ user, isAdmin }: Props) {
             <div className="text-2xl">🤝</div>
             <div>
               <h1 className="text-white font-bold text-lg leading-tight">
-                Coach Me
+                Coach Chris
               </h1>
               <p className="text-gray-500 text-xs">
                 Never Split the Difference — live coaching

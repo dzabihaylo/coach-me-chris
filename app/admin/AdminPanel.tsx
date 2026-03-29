@@ -78,7 +78,7 @@ export default function AdminPanel({ adminEmail }: { adminEmail: string }) {
 
         <h1 className="text-xl font-bold text-white mb-1">Access Management</h1>
         <p className="text-gray-500 text-sm mb-6">
-          Manage who can sign in to Coach Me Chris. Only whitelisted emails
+          Manage who can sign in to Coach Chris. Only whitelisted emails
           receive magic links.
         </p>
 

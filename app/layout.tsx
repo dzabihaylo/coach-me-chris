@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Coach Me — Sales Negotiation Coach",
+  title: "Coach Chris — Sales Negotiation Coach",
   description:
     "Real-time negotiation and communication coaching powered by Chris Voss techniques",
 };
