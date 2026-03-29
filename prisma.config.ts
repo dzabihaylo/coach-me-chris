@@ -7,6 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+    // Always use a file URL for schema validation.
+    // The actual connection is handled by the driver adapter at runtime.
+    url: "file:./prisma/dev.db",
   },
 });
