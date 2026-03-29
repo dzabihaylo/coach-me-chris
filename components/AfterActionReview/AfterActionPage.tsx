@@ -75,9 +75,11 @@ export default function AfterActionPage() {
         setCurrentTitle(formData.title);
         setView("result");
         fetchReviews();
+      } else {
+        alert(data.error || "Analysis returned no results. The transcript may be too short or the request timed out.");
       }
     } catch {
-      alert("Analysis failed. Check your API key and try again.");
+      alert("Analysis failed. The request may have timed out — try again or use a shorter transcript excerpt.");
     } finally {
       setIsLoading(false);
     }

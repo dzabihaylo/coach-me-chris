@@ -3,6 +3,8 @@ import { anthropic } from "@/lib/claude";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
+export const maxDuration = 30;
+
 const MIRROR_SYSTEM = `You are a negotiation training partner for a mirroring drill. The user is practicing Chris Voss's mirroring technique — repeating the last 2-3 words of what someone says to encourage elaboration.
 
 Your role: Respond to the user's mirror naturally, as the counterpart would in a negotiation. If they mirror correctly (repeating last 2-3 words with a slight upward inflection), continue the conversation with 1-2 new sentences that give them another mirroring opportunity. If they don't mirror correctly, gently note it and replay the line.
