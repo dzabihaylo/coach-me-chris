@@ -73,6 +73,17 @@ model AllowedEmail {
   addedBy   String?  // email of admin who added this entry
 }
 
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // "whitelist.add", "whitelist.remove", etc.
+  actor     String   // email of user who performed the action
+  target    String?  // target email or resource
+  details   String?  // optional JSON details
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 // ─── Granola meeting cache ──────────────────────────────────────────────────
 
 model GranolaMeeting {
@@ -121,6 +132,7 @@ model CallReview {
 
   @@index([callDate])
   @@index([userId])
+  @@index([userId, callDate])
 }
 
 model PracticeSession {

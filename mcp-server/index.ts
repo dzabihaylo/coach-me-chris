@@ -4,6 +4,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createClient } from "@libsql/client";
 import { z } from "zod";
 
+function safeJsonParse<T>(str: string | null | undefined, fallback: T): T {
+  if (!str) return fallback;
+  try { return JSON.parse(str) as T; } catch { return fallback; }
+}
+
 const db = createClient({
   url: process.env.DATABASE_URL ?? "file:../prisma/dev.db",
   authToken: process.env.DATABASE_AUTH_TOKEN,
@@ -190,8 +195,8 @@ server.tool(
       id: r.id,
       startedAt: r.startedAt,
       endedAt: r.endedAt,
-      nudges: r.nudgesJson ? JSON.parse(r.nudgesJson as string) : [],
-      transcript: r.transcriptSnippets ? JSON.parse(r.transcriptSnippets as string) : [],
+      nudges: safeJsonParse(r.nudgesJson as string, []),
+      transcript: safeJsonParse(r.transcriptSnippets as string, []),
     }));
 
     return {

@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function GET() {
   const session = await requireAdmin();
   if (!session) return Response.json({ error: "Forbidden" }, { status: 403 });
@@ -21,6 +23,9 @@ export async function POST(req: Request) {
   }
 
   const normalizedEmail = email.toLowerCase().trim();
+  if (!EMAIL_RE.test(normalizedEmail)) {
+    return Response.json({ error: "Invalid email format" }, { status: 400 });
+  }
   const validRole = role === "admin" ? "admin" : "user";
 
   const existing = await db.allowedEmail.findUnique({
@@ -35,6 +40,14 @@ export async function POST(req: Request) {
       email: normalizedEmail,
       role: validRole,
       addedBy: session.user?.email ?? "unknown",
+    },
+  });
+  await db.auditLog.create({
+    data: {
+      action: "whitelist.add",
+      actor: session.user?.email ?? "unknown",
+      target: normalizedEmail,
+      details: JSON.stringify({ role: validRole }),
     },
   });
   return Response.json({ entry }, { status: 201 });
@@ -57,5 +70,12 @@ export async function DELETE(req: Request) {
   }
 
   await db.allowedEmail.delete({ where: { email: normalizedEmail } });
+  await db.auditLog.create({
+    data: {
+      action: "whitelist.remove",
+      actor: session.user?.email ?? "unknown",
+      target: normalizedEmail,
+    },
+  });
   return Response.json({ ok: true });
 }

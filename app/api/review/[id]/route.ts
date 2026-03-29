@@ -21,6 +21,8 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
+  const existing = await db.callReview.findUnique({ where: { id, userId: session.user.id } });
+  if (!existing) return Response.json({ error: "Not found" }, { status: 404 });
   await db.callReview.delete({ where: { id, userId: session.user.id } });
   return Response.json({ success: true });
 }

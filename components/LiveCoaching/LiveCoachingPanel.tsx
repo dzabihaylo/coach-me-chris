@@ -39,6 +39,15 @@ export default function LiveCoachingPanel() {
       const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
       if (!SR) setSpeechSupported(false);
     }
+    // Cleanup timers on unmount to prevent memory leaks
+    return () => {
+      if (coachTimerRef.current) clearInterval(coachTimerRef.current);
+      if (clockTimerRef.current) clearInterval(clockTimerRef.current);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch { /* already stopped */ }
+      }
+      isActiveRef.current = false;
+    };
   }, []);
 
   const callCoach = useCallback(async () => {

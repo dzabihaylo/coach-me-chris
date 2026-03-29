@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { safeJsonParse } from "@/lib/safe-json";
 
 export async function GET() {
   const session = await auth();
@@ -17,7 +18,7 @@ export async function GET() {
       id: m.id,
       title: m.title,
       date: m.date,
-      participants: JSON.parse(m.participants),
+      participants: safeJsonParse(m.participants, []),
       durationMinutes: m.durationMinutes,
       hasTranscript: !!m.transcript,
       reviewId: m.reviewId,

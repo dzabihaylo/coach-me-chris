@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { anthropic } from "@/lib/claude";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { parseClaudeJson } from "@/lib/safe-json";
 
 export const maxDuration = 30;
 
@@ -50,6 +52,11 @@ export async function POST(req: NextRequest) {
   }
   const userId = authSession.user.id;
 
+  const { allowed } = rateLimit(userId, 30, 60_000); // 30 practice calls/min
+  if (!allowed) {
+    return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const { drillType, messages, userInput, saveSession } = await req.json();
 
   let systemPrompt = "";
@@ -92,8 +99,7 @@ export async function POST(req: NextRequest) {
 
     let parsed: Record<string, unknown>;
     if (isStructured) {
-      const raw = content.text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-      parsed = JSON.parse(raw);
+      parsed = parseClaudeJson(content.text);
     } else {
       parsed = { counterpartResponse: content.text };
     }
@@ -112,7 +118,8 @@ export async function POST(req: NextRequest) {
 
     return Response.json({ result: parsed, messages: conversationMessages });
   } catch (err) {
-    console.error("Practice error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[practice]", message);
     return Response.json({ error: "Practice session failed" }, { status: 500 });
   }
 }

@@ -23,6 +23,8 @@ export default function AdminPanel({ adminEmail }: { adminEmail: string }) {
     if (res.ok) {
       const data = await res.json();
       setEntries(data.entries);
+    } else {
+      setError("Failed to load whitelist");
     }
     setLoading(false);
   }

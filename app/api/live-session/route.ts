@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { safeJsonParse } from "@/lib/safe-json";
 
 export async function POST(req: NextRequest) {
   const authSession = await auth();
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
       });
       if (!session)
         return Response.json({ error: "Not found" }, { status: 404 });
-      const nudges = JSON.parse(session.nudgesJson);
+      const nudges = safeJsonParse<unknown[]>(session.nudgesJson, []);
       nudges.push({ nudge, timestamp: new Date().toISOString() });
       await db.liveSession.update({
         where: { id: sessionId },
@@ -33,12 +34,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "end" && sessionId) {
+      const snippetText = typeof transcript === "string" ? transcript.slice(0, 50_000) : "";
       const updated = await db.liveSession.update({
         where: { id: sessionId, userId },
         data: {
           endedAt: new Date(),
-          transcriptSnippets: transcript
-            ? JSON.stringify([transcript])
+          transcriptSnippets: snippetText
+            ? JSON.stringify([snippetText])
             : undefined,
         },
       });
@@ -47,8 +49,8 @@ export async function POST(req: NextRequest) {
 
     return Response.json({ error: "Unknown action" }, { status: 400 });
   } catch (err) {
-    console.error("[live-session] error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json({ error: message }, { status: 500 });
+    console.error("[live-session]", message);
+    return Response.json({ error: "Session operation failed" }, { status: 500 });
   }
 }

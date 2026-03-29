@@ -11,6 +11,7 @@ export async function GET() {
   const reviews = await db.callReview.findMany({
     where: { userId },
     orderBy: { callDate: "asc" },
+    take: 500,
     select: {
       id: true,
       title: true,
@@ -32,6 +33,7 @@ export async function GET() {
   const practiceSessions = await db.practiceSession.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
+    take: 100,
     select: {
       id: true,
       drillType: true,
