@@ -1,16 +1,19 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
 
   if (url.startsWith("file:")) {
+    // Local SQLite — dynamic import to avoid bundling native module on Vercel
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
     const adapter = new PrismaBetterSqlite3({ url });
     return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
   }
 
   // Remote Turso/libsql
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { PrismaLibSql } = require("@prisma/adapter-libsql");
   const adapter = new PrismaLibSql({
     url,
     authToken: process.env.DATABASE_AUTH_TOKEN,
