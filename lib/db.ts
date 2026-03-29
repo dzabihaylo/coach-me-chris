@@ -18,7 +18,13 @@ function createPrismaClient() {
     url,
     authToken: process.env.DATABASE_AUTH_TOKEN,
   });
-  return new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
+  // PrismaClient validates DATABASE_URL even when an adapter is provided.
+  // Temporarily set a valid sqlite URL so the constructor doesn't reject libsql://.
+  const origUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = "file:./prisma/dev.db";
+  const client = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
+  process.env.DATABASE_URL = origUrl;
+  return client;
 }
 
 const globalForPrisma = globalThis as unknown as {

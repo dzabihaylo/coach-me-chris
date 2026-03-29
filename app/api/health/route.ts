@@ -8,7 +8,10 @@ export async function GET() {
     const { PrismaLibSql } = await import("@prisma/adapter-libsql");
 
     const adapter = new PrismaLibSql({ url, authToken: token });
+    const origUrl = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = "file:./prisma/dev.db";
     const prisma = new PrismaClient({ adapter } as ConstructorParameters<typeof PrismaClient>[0]);
+    process.env.DATABASE_URL = origUrl;
     const userCount = await prisma.user.count();
 
     return Response.json({
