@@ -19,10 +19,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user }) {
       if (!user.email) return false;
+      const email = user.email.toLowerCase();
       const allowed = await db.allowedEmail.findUnique({
-        where: { email: user.email.toLowerCase() },
+        where: { email },
       });
-      return !!allowed;
+      if (!allowed) return false;
+      // Record login timestamp (fire-and-forget)
+      db.allowedEmail
+        .update({ where: { email }, data: { lastLoginAt: new Date() } })
+        .catch(() => {});
+      return true;
     },
     async jwt({ token, user }) {
       if (user) {

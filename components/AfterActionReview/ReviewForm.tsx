@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import RecordingUpload from "./RecordingUpload";
 
 interface ReviewFormProps {
@@ -21,13 +22,9 @@ interface ReviewFormProps {
 
 export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormProps) {
   const [title, setTitle] = useState(prefill?.title ?? "");
-  const [callDate, setCallDate] = useState(
-    prefill?.callDate ?? new Date().toISOString().split("T")[0]
-  );
+  const [callDate, setCallDate] = useState(prefill?.callDate ?? new Date().toISOString().split("T")[0]);
   const [transcriptText, setTranscriptText] = useState(prefill?.transcriptText ?? "");
-  const [duration, setDuration] = useState(
-    prefill?.durationMinutes?.toString() ?? ""
-  );
+  const [duration, setDuration] = useState(prefill?.durationMinutes?.toString() ?? "");
 
   useEffect(() => {
     if (prefill) {
@@ -50,36 +47,39 @@ export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {prefill && (
-        <div className="bg-emerald-900/20 border border-emerald-800/50 rounded-lg px-3 py-2 text-emerald-400 text-sm">
+        <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-4 py-3 text-emerald-400 text-sm">
           Imported from Granola. Review the transcript below and click Analyze.
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">Call Title</label>
+          <label className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-1.5 block">
+            Call Title
+          </label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. Acme Corp QBR"
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-faint)]"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">Call Date</label>
+          <label className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-1.5 block">
+            Call Date
+          </label>
           <input
             type="date"
             value={callDate}
             onChange={(e) => setCallDate(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)]"
           />
         </div>
       </div>
 
-      {/* Recording upload */}
       {!prefill && (
         <RecordingUpload
           onTranscriptReady={({ transcript, durationMinutes }) => {
@@ -90,20 +90,20 @@ export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormP
       )}
 
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">
-          Duration (minutes, optional)
+        <label className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-1.5 block">
+          Duration (minutes)
         </label>
         <input
           type="number"
           value={duration}
           onChange={(e) => setDuration(e.target.value)}
           placeholder="45"
-          className="w-32 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500"
+          className="w-28 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-faint)]"
         />
       </div>
 
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">
+        <label className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-1.5 block">
           Transcript *
         </label>
         <textarea
@@ -111,21 +111,21 @@ export default function ReviewForm({ onSubmit, isLoading, prefill }: ReviewFormP
           onChange={(e) => setTranscriptText(e.target.value)}
           placeholder="Paste your call transcript here..."
           required
-          className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-emerald-500 h-48 resize-none font-mono"
+          className="w-full bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-faint)] h-48 resize-none font-mono leading-relaxed"
         />
-        <p className="text-xs text-gray-500 mt-1">
-          {transcriptText.length} chars — aim for 300+ for quality analysis
+        <p className="text-[var(--text-faint)] text-xs mt-1.5">
+          {transcriptText.length.toLocaleString()} chars — aim for 300+ for quality analysis
         </p>
       </div>
 
       <button
         type="submit"
         disabled={isLoading || !transcriptText.trim()}
-        className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold transition-colors"
+        className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:from-zinc-700 disabled:to-zinc-700 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold text-sm shadow-lg shadow-emerald-900/25 disabled:shadow-none"
       >
         {isLoading ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <Loader2 size={16} className="animate-spin" />
             Analyzing call...
           </span>
         ) : (

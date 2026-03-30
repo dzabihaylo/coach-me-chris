@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useVoiceChat } from "@/hooks/useVoiceChat";
+import VoiceControls from "@/components/shared/VoiceControls";
 
 interface Message {
   role: "user" | "assistant";
@@ -19,12 +21,53 @@ const HINTS = [
 
 export default function RoleplayScenario() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
   const [hintIdx, setHintIdx] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const sendMessage = useCallback(
+    async (input: string, currentMessages: Message[]) => {
+      if (!input.trim() || loading) return;
+      const userMessage: Message = { role: "user", content: input };
+      const newMessages = [...currentMessages, userMessage];
+      setMessages(newMessages);
+      setTextInput("");
+      setLoading(true);
+      setShowHint(false);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/practice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ drillType: "roleplay", messages: newMessages, userInput: null }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "API error");
+        const response: string = data.result?.counterpartResponse || data.result || "...";
+        setMessages([...newMessages, { role: "assistant", content: response }]);
+
+        // Speak Alex's response
+        await voice.speak(response);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to get response");
+      }
+      setLoading(false);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loading]
+  );
+
+  const voice = useVoiceChat({
+    onSpeechResult: (transcript) => {
+      sendMessage(transcript, messages);
+    },
+    voiceHint: "Daniel",
+    rate: 0.95,
+  });
 
   const startScenario = async () => {
     setStarted(true);
@@ -44,36 +87,18 @@ export default function RoleplayScenario() {
       if (!res.ok) throw new Error(data.error || "API error");
       const response: string = data.result?.counterpartResponse || "Hello, I appreciate you reaching out...";
       setMessages([{ role: "assistant", content: response }]);
+
+      await voice.speak(response);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start scenario");
     }
     setLoading(false);
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
-    const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
-    setShowHint(false);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/practice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drillType: "roleplay", messages: newMessages, userInput: null }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "API error");
-      const response: string = data.result?.counterpartResponse || data.result || "...";
-      setMessages([...newMessages, { role: "assistant", content: response }]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to get response");
+  const handleTextSubmit = () => {
+    if (textInput.trim()) {
+      sendMessage(textInput, messages);
     }
-    setLoading(false);
   };
 
   const getHint = () => {
@@ -82,43 +107,45 @@ export default function RoleplayScenario() {
   };
 
   const reset = () => {
+    voice.stopSpeaking();
+    voice.stopListening();
     setMessages([]);
-    setInput("");
+    setTextInput("");
     setStarted(false);
     setShowHint(false);
   };
 
   return (
     <div className="space-y-4">
-      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-        <h3 className="text-white font-semibold mb-2">Role-Play Scenario</h3>
-        <div className="text-sm text-gray-400 space-y-1">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 border border-[var(--border-default)]">
+        <h3 className="text-[var(--text-primary)] font-semibold mb-2">Role-Play Scenario</h3>
+        <div className="text-sm text-[var(--text-muted)] space-y-1">
           <p>
             You&apos;re selling enterprise software to{" "}
-            <span className="text-white">Alex Chen, VP of Operations</span> at a
+            <span className="text-[var(--text-primary)]">Alex Chen, VP of Operations</span> at a
             500-person logistics company. They use a competitor ($180K/year) and
             are skeptical.
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[var(--text-faint)]">
             Hint: There&apos;s a black swan hidden in this scenario. Find it.
           </p>
         </div>
       </div>
 
       {showHint && (
-        <div className="bg-indigo-900/30 border border-indigo-600/40 rounded-lg p-3 text-sm text-indigo-300">
-          💡 {HINTS[(hintIdx - 1 + HINTS.length) % HINTS.length]}
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 text-sm text-indigo-300">
+          {HINTS[(hintIdx - 1 + HINTS.length) % HINTS.length]}
         </div>
       )}
 
       {error && (
-        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>
       )}
 
       {!started ? (
         <button
           onClick={startScenario}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-lg font-semibold transition-colors"
+          className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-[var(--text-primary)] py-3 rounded-xl font-semibold transition-colors"
         >
           Start Role-Play
         </button>
@@ -128,54 +155,50 @@ export default function RoleplayScenario() {
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`rounded-lg p-3 text-sm ${
+                className={`rounded-xl p-3 text-sm ${
                   m.role === "assistant"
-                    ? "bg-gray-700 text-gray-200 border-l-2 border-indigo-500"
-                    : "bg-gray-800 text-gray-300 border-l-2 border-emerald-500 ml-8"
+                    ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border-l-2 border-indigo-500"
+                    : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-l-2 border-emerald-500 ml-8"
                 }`}
               >
-                <span className="text-xs text-gray-500 block mb-1">
+                <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium block mb-1">
                   {m.role === "assistant" ? "Alex Chen (Buyer)" : "You (Seller)"}
                 </span>
                 {m.content}
               </div>
             ))}
             {loading && (
-              <div className="bg-gray-700 rounded-lg p-3 text-sm text-gray-400 animate-pulse">
+              <div className="bg-[var(--bg-elevated)] rounded-xl p-3 text-sm text-[var(--text-muted)] animate-pulse">
                 Alex is thinking...
               </div>
             )}
           </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Your response..."
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500"
-              disabled={loading}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-600 text-white px-4 rounded-lg text-sm font-medium transition-colors"
-            >
-              Send
-            </button>
-          </div>
+          <VoiceControls
+            isListening={voice.isListening}
+            isSpeaking={voice.isSpeaking}
+            interimText={voice.interimText}
+            speechSupported={voice.speechSupported}
+            onToggleListening={voice.toggleListening}
+            onStopSpeaking={voice.stopSpeaking}
+            textInput={textInput}
+            onTextInputChange={setTextInput}
+            onTextSubmit={handleTextSubmit}
+            textPlaceholder="Your response..."
+            disabled={loading}
+            accentColor="indigo"
+          />
 
           <div className="flex gap-2">
             <button
               onClick={getHint}
-              className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
             >
-              💡 Hint
+              Hint
             </button>
             <button
               onClick={reset}
-              className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
             >
               Reset
             </button>

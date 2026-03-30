@@ -68,11 +68,12 @@ model VerificationToken {
 // ─── Access control ────────────────────────────────────────────────────────
 
 model AllowedEmail {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  role      String   @default("user") // "user" or "admin"
-  createdAt DateTime @default(now())
-  addedBy   String?  // email of admin who added this entry
+  id          String    @id @default(cuid())
+  email       String    @unique
+  role        String    @default("user") // "user" or "admin"
+  createdAt   DateTime  @default(now())
+  addedBy     String?   // email of admin who added this entry
+  lastLoginAt DateTime? // updated on each successful sign-in
 }
 
 model AuditLog {

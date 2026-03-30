@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useVoiceChat } from "@/hooks/useVoiceChat";
+import VoiceControls from "@/components/shared/VoiceControls";
 
 interface Message {
   role: "user" | "assistant";
@@ -16,18 +18,59 @@ interface MirrorResult {
 
 export default function MirrorDrill() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
+  const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<MirrorResult | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sendMirror = useCallback(
+    async (input: string, currentMessages: Message[]) => {
+      if (!input.trim() || loading) return;
+      const userMessage: Message = { role: "user", content: input };
+      const newMessages = [...currentMessages, userMessage];
+      setMessages(newMessages);
+      setTextInput("");
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/practice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ drillType: "mirror", messages: newMessages, userInput: null }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "API error");
+        const parsed: MirrorResult = data.result;
+        setScore((s) => ({ correct: s.correct + (parsed.mirrorCorrect ? 1 : 0), total: s.total + 1 }));
+        setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse }]);
+        setResult(parsed);
+
+        // Speak the counterpart's response
+        await voice.speak(parsed.counterpartResponse);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to get response");
+      }
+      setLoading(false);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loading]
+  );
+
+  const voice = useVoiceChat({
+    onSpeechResult: (transcript) => {
+      sendMirror(transcript, messages);
+    },
+    voiceHint: "Samantha",
+    rate: 0.9,
+  });
+
   const startDrill = async () => {
     setStarted(true);
     setLoading(true);
     setError(null);
-    const starter = "We've been looking at your platform for a few months now, but honestly we're pretty comfortable with our current setup. The switching costs would be substantial.";
     try {
       const res = await fetch("/api/practice", {
         method: "POST",
@@ -41,45 +84,29 @@ export default function MirrorDrill() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
       const parsed: MirrorResult = data.result;
-      setMessages([{ role: "assistant", content: parsed.counterpartResponse || starter }]);
+      const opening = parsed.counterpartResponse || "We've been looking at your platform for a few months now, but honestly we're pretty comfortable with our current setup.";
+      setMessages([{ role: "assistant", content: opening }]);
       setResult(parsed);
+
+      // Speak the opening
+      await voice.speak(opening);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start drill");
-      setMessages([{ role: "assistant", content: starter }]);
     }
     setLoading(false);
   };
 
-  const sendMirror = async () => {
-    if (!input.trim() || loading) return;
-    const userMessage: Message = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/practice", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drillType: "mirror", messages: newMessages, userInput: null }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "API error");
-      const parsed: MirrorResult = data.result;
-      setScore((s) => ({ correct: s.correct + (parsed.mirrorCorrect ? 1 : 0), total: s.total + 1 }));
-      setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse }]);
-      setResult(parsed);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to get response");
+  const handleTextSubmit = () => {
+    if (textInput.trim()) {
+      sendMirror(textInput, messages);
     }
-    setLoading(false);
   };
 
   const reset = () => {
+    voice.stopSpeaking();
+    voice.stopListening();
     setMessages([]);
-    setInput("");
+    setTextInput("");
     setResult(null);
     setScore({ correct: 0, total: 0 });
     setStarted(false);
@@ -87,38 +114,38 @@ export default function MirrorDrill() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-        <h3 className="text-white font-semibold mb-2">Mirroring Drill</h3>
-        <p className="text-gray-400 text-sm">
+      <div className="bg-[var(--bg-card)] rounded-2xl p-4 border border-[var(--border-default)]">
+        <h3 className="text-[var(--text-primary)] font-semibold mb-2">Mirroring Drill</h3>
+        <p className="text-[var(--text-muted)] text-sm">
           Repeat the last 2-3 words of what the counterpart says. This encourages
           them to elaborate. Use a slight upward inflection.
         </p>
-        <div className="mt-2 text-xs text-gray-500">
-          Example: They say "...our budget is very tight right now" → You say:
-          <span className="text-emerald-400 italic"> "Very tight right now?"</span>
+        <div className="mt-2 text-xs text-[var(--text-faint)]">
+          Example: They say &ldquo;...our budget is very tight right now&rdquo; → You say:
+          <span className="text-emerald-400 italic"> &ldquo;Very tight right now?&rdquo;</span>
         </div>
       </div>
 
       {score.total > 0 && (
-        <div className="flex items-center gap-4 bg-gray-800 rounded-lg p-3">
-          <span className="text-sm text-gray-400">Score:</span>
+        <div className="flex items-center gap-4 bg-[var(--bg-card)] rounded-xl p-3">
+          <span className="text-sm text-[var(--text-muted)]">Score:</span>
           <span className="text-emerald-400 font-bold">
             {score.correct}/{score.total}
           </span>
-          <span className="text-gray-500 text-sm">
+          <span className="text-[var(--text-faint)] text-sm">
             ({Math.round((score.correct / score.total) * 100)}% accuracy)
           </span>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>
       )}
 
       {!started ? (
         <button
           onClick={startDrill}
-          className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg font-semibold transition-colors"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-[var(--text-primary)] py-3 rounded-xl font-semibold transition-colors"
         >
           Start Mirroring Drill
         </button>
@@ -128,20 +155,20 @@ export default function MirrorDrill() {
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`rounded-lg p-3 text-sm ${
+                className={`rounded-xl p-3 text-sm ${
                   m.role === "assistant"
-                    ? "bg-gray-700 text-gray-200 border-l-2 border-blue-500"
-                    : "bg-gray-800 text-gray-300 border-l-2 border-emerald-500 ml-8"
+                    ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border-l-2 border-blue-500"
+                    : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-l-2 border-emerald-500 ml-8"
                 }`}
               >
-                <span className="text-xs text-gray-500 block mb-1">
+                <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium block mb-1">
                   {m.role === "assistant" ? "Counterpart" : "You"}
                 </span>
                 {m.content}
               </div>
             ))}
             {loading && (
-              <div className="bg-gray-700 rounded-lg p-3 text-sm text-gray-400 animate-pulse">
+              <div className="bg-[var(--bg-elevated)] rounded-xl p-3 text-sm text-[var(--text-muted)] animate-pulse">
                 Counterpart thinking...
               </div>
             )}
@@ -149,12 +176,12 @@ export default function MirrorDrill() {
 
           {result && result.feedback && (
             <div
-              className={`rounded-lg p-3 text-sm border ${
+              className={`rounded-xl p-3 text-sm border ${
                 result.mirrorCorrect
-                  ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-300"
+                  ? "bg-emerald-500/8 border-emerald-500/15 text-emerald-300"
                   : result.mirrorCorrect === false
-                    ? "bg-red-900/20 border-red-700/40 text-red-300"
-                    : "bg-gray-800 border-gray-600 text-gray-400"
+                    ? "bg-red-500/8 border-red-500/15 text-red-300"
+                    : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)]"
               }`}
             >
               {result.mirrorCorrect === true && "✓ "}{result.mirrorCorrect === false && "✗ "}
@@ -162,30 +189,27 @@ export default function MirrorDrill() {
             </div>
           )}
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMirror()}
-              placeholder='Mirror last 2-3 words with "?"...'
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-              disabled={loading}
-            />
-            <button
-              onClick={sendMirror}
-              disabled={loading || !input.trim()}
-              className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white px-4 rounded-lg text-sm font-medium transition-colors"
-            >
-              Mirror
-            </button>
-            <button
-              onClick={reset}
-              className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 rounded-lg text-sm transition-colors"
-            >
-              Reset
-            </button>
-          </div>
+          <VoiceControls
+            isListening={voice.isListening}
+            isSpeaking={voice.isSpeaking}
+            interimText={voice.interimText}
+            speechSupported={voice.speechSupported}
+            onToggleListening={voice.toggleListening}
+            onStopSpeaking={voice.stopSpeaking}
+            textInput={textInput}
+            onTextInputChange={setTextInput}
+            onTextSubmit={handleTextSubmit}
+            textPlaceholder='Mirror last 2-3 words with "?"...'
+            disabled={loading}
+            accentColor="blue"
+          />
+
+          <button
+            onClick={reset}
+            className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
+          >
+            Reset
+          </button>
         </div>
       )}
     </div>

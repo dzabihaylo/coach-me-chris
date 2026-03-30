@@ -9,13 +9,26 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { granolaApiKey: true },
+    select: {
+      name: true,
+      email: true,
+      image: true,
+      granolaApiKey: true,
+      createdAt: true,
+    },
   });
 
+  if (!user) {
+    return Response.json({ error: "User not found" }, { status: 404 });
+  }
+
   return Response.json({
-    hasGranolaKey: !!user?.granolaApiKey,
-    // Don't return the actual key — just whether it's set
-    granolaKeyPrefix: user?.granolaApiKey
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt,
+    hasGranolaKey: !!user.granolaApiKey,
+    granolaKeyPrefix: user.granolaApiKey
       ? user.granolaApiKey.slice(0, 8) + "..."
       : null,
   });
@@ -27,19 +40,37 @@ export async function PUT(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { granolaApiKey } = await req.json();
+  const body = await req.json();
+  const updates: Record<string, unknown> = {};
 
-  if (granolaApiKey !== undefined) {
-    // Allow null/empty to clear the key
-    const key = granolaApiKey && typeof granolaApiKey === "string" && granolaApiKey.trim()
-      ? granolaApiKey.trim()
-      : null;
-
-    await db.user.update({
-      where: { id: session.user.id },
-      data: { granolaApiKey: key },
-    });
+  // Handle name update
+  if (body.name !== undefined) {
+    const name =
+      body.name && typeof body.name === "string" && body.name.trim()
+        ? body.name.trim().slice(0, 100)
+        : null;
+    updates.name = name;
   }
+
+  // Handle Granola API key update
+  if (body.granolaApiKey !== undefined) {
+    const key =
+      body.granolaApiKey &&
+      typeof body.granolaApiKey === "string" &&
+      body.granolaApiKey.trim()
+        ? body.granolaApiKey.trim()
+        : null;
+    updates.granolaApiKey = key;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return Response.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: updates,
+  });
 
   return Response.json({ ok: true });
 }

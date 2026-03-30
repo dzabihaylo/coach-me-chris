@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Phone, PhoneOff, MicOff, Clock } from "lucide-react";
 import NudgeBadge from "@/components/shared/NudgeBadge";
 
 interface Nudge {
@@ -39,7 +40,6 @@ export default function LiveCoachingPanel() {
       const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
       if (!SR) setSpeechSupported(false);
     }
-    // Cleanup timers on unmount to prevent memory leaks
     return () => {
       if (coachTimerRef.current) clearInterval(coachTimerRef.current);
       if (clockTimerRef.current) clearInterval(clockTimerRef.current);
@@ -78,17 +78,11 @@ export default function LiveCoachingPanel() {
           fetch("/api/live-session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "nudge",
-              sessionId,
-              nudge: data.nudge,
-            }),
+            body: JSON.stringify({ action: "nudge", sessionId, nudge: data.nudge }),
           });
         }
       }
-    } catch {
-      // silent fail on live coaching nudges
-    }
+    } catch { /* silent */ }
   }, [sessionId]);
 
   const startSession = async () => {
@@ -119,17 +113,10 @@ export default function LiveCoachingPanel() {
     setLatestNudge(null);
     transcriptRef.current = "";
 
-    clockTimerRef.current = setInterval(() => {
-      setElapsedSeconds((s) => s + 1);
-    }, 1000);
+    clockTimerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    coachTimerRef.current = setInterval(() => callCoach(), 25000);
 
-    coachTimerRef.current = setInterval(() => {
-      callCoach();
-    }, 25000);
-
-    if (speechSupported) {
-      startListening();
-    }
+    if (speechSupported) startListening();
   };
 
   const startListening = () => {
@@ -147,9 +134,7 @@ export default function LiveCoachingPanel() {
     recognition.onresult = (event: any) => {
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          final += event.results[i][0].transcript + " ";
-        }
+        if (event.results[i].isFinal) final += event.results[i][0].transcript + " ";
       }
       if (final) {
         transcriptRef.current += final;
@@ -157,16 +142,10 @@ export default function LiveCoachingPanel() {
       }
     };
 
-    recognition.onerror = () => {
-      setIsListening(false);
-    };
-
+    recognition.onerror = () => setIsListening(false);
     recognition.onend = () => {
       setIsListening(false);
-      // Restart if still active (use ref to avoid stale closure)
-      if (isActiveRef.current) {
-        setTimeout(() => startListening(), 500);
-      }
+      if (isActiveRef.current) setTimeout(() => startListening(), 500);
     };
 
     try {
@@ -174,15 +153,12 @@ export default function LiveCoachingPanel() {
       recognitionRef.current = recognition;
       setIsListening(true);
     } catch {
-      // Speech recognition unavailable or already running — continue without mic
       setSpeechSupported(false);
     }
   };
 
   const endSession = async () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
+    if (recognitionRef.current) recognitionRef.current.stop();
     if (coachTimerRef.current) clearInterval(coachTimerRef.current);
     if (clockTimerRef.current) clearInterval(clockTimerRef.current);
 
@@ -190,11 +166,7 @@ export default function LiveCoachingPanel() {
       await fetch("/api/live-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "end",
-          sessionId,
-          transcript: transcriptRef.current,
-        }),
+        body: JSON.stringify({ action: "end", sessionId, transcript: transcriptRef.current }),
       });
     }
 
@@ -219,66 +191,78 @@ export default function LiveCoachingPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Status Bar */}
-      <div className="flex items-center justify-between bg-gray-800 rounded-xl p-4 border border-gray-700">
-        <div className="flex items-center gap-4">
-          {status === "active" && (
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
-              <span className="text-red-400 font-medium text-sm">LIVE</span>
-            </div>
-          )}
-          {status === "active" && (
-            <span className="text-gray-300 font-mono text-lg">
-              {formatTime(elapsedSeconds)}
-            </span>
-          )}
-          {isListening && (
-            <span className="text-emerald-400 text-sm flex items-center gap-1">
-              <span className="h-2 w-2 bg-emerald-400 rounded-full animate-pulse" />
-              Mic active
-            </span>
-          )}
-        </div>
+      {/* Call Control Bar */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {status === "active" ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-red-400 font-semibold text-sm tracking-wide">LIVE</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  <Clock size={14} />
+                  <span className="font-mono text-lg tabular-nums">{formatTime(elapsedSeconds)}</span>
+                </div>
+                {isListening && (
+                  <span className="text-emerald-400 text-xs flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-full">
+                    <span className="h-1.5 w-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                    Mic on
+                  </span>
+                )}
+                {!isListening && speechSupported && (
+                  <span className="text-[var(--text-faint)] text-xs flex items-center gap-1.5">
+                    <MicOff size={12} />
+                    Mic off
+                  </span>
+                )}
+              </>
+            ) : (
+              <div>
+                <h2 className="text-[var(--text-primary)] font-semibold">Live Coaching</h2>
+                <p className="text-[var(--text-muted)] text-sm">Get real-time nudges during your call</p>
+              </div>
+            )}
+          </div>
 
-        <div className="flex gap-3">
           {status === "idle" ? (
             <button
               onClick={startSession}
               disabled={isStarting}
-              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-semibold transition-colors"
+              className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-lg shadow-emerald-900/25"
             >
-              {isStarting ? "Starting…" : "Start Call"}
+              <Phone size={15} />
+              {isStarting ? "Starting..." : "Start Call"}
             </button>
           ) : (
             <button
               onClick={endSession}
-              className="bg-red-600 hover:bg-red-500 text-white px-5 py-2 rounded-lg font-semibold transition-colors"
+              className="bg-red-600/90 hover:bg-red-500 text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2"
             >
+              <PhoneOff size={15} />
               End Call
             </button>
           )}
         </div>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="bg-red-900/30 border border-red-700/50 rounded-lg px-4 py-3 text-red-400 text-sm">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">
           {error}
         </div>
       )}
 
-      {/* Latest Nudge — prominent display */}
+      {/* Latest Nudge */}
       <div className="min-h-[80px]">
         {latestNudge ? (
           <NudgeBadge
             nudge={latestNudge.nudge}
             technique={latestNudge.technique}
             onDismiss={() => setLatestNudge(null)}
-            className="text-xl"
           />
         ) : (
-          <div className="border border-dashed border-gray-600 rounded-lg px-4 py-6 text-center text-gray-500 text-sm">
+          <div className="border border-dashed border-[var(--border-default)] rounded-2xl px-5 py-8 text-center text-[var(--text-faint)] text-sm">
             {status === "active"
               ? "Listening... coaching nudges will appear here"
               : "Start a call to receive real-time coaching"}
@@ -286,13 +270,11 @@ export default function LiveCoachingPanel() {
         )}
       </div>
 
-      {/* Manual transcript input (fallback if no mic) */}
+      {/* Manual input */}
       {status === "active" && (
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">
-            {speechSupported
-              ? "Paste conversation snippets for instant coaching"
-              : "Paste conversation (speech recognition not available in this browser)"}
+          <label className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-1.5 block">
+            {speechSupported ? "Paste conversation snippets" : "Type conversation (mic unavailable)"}
           </label>
           <div className="flex gap-2">
             <textarea
@@ -305,11 +287,11 @@ export default function LiveCoachingPanel() {
                 }
               }}
               placeholder="Paste what was just said..."
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 resize-none h-16 focus:outline-none focus:border-emerald-500"
+              className="flex-1 bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] placeholder-[var(--text-faint)] resize-none h-16"
             />
             <button
               onClick={handleManualSubmit}
-              className="bg-emerald-700 hover:bg-emerald-600 text-white px-4 rounded-lg font-medium text-sm transition-colors"
+              className="bg-emerald-600/80 hover:bg-emerald-500 text-white px-5 rounded-xl font-medium text-sm"
             >
               Coach
             </button>
@@ -320,21 +302,21 @@ export default function LiveCoachingPanel() {
       {/* Nudge History */}
       {nudges.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 mb-3">
+          <h3 className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-3">
             Nudge History
           </h3>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
             {nudges.map((n) => (
               <div
                 key={n.id}
-                className="flex items-center gap-3 bg-gray-800/50 rounded-lg px-3 py-2"
+                className="flex items-center gap-3 bg-[var(--bg-card)] rounded-xl px-4 py-2.5 border border-[var(--border-subtle)]"
               >
-                <span className="text-xs text-gray-500 font-mono w-12 shrink-0">
+                <span className="text-[11px] text-[var(--text-faint)] font-mono w-10 shrink-0 tabular-nums">
                   {formatTime(Math.floor((n.timestamp.getTime() - sessionStartRef.current) / 1000))}
                 </span>
-                <span className="text-gray-200 text-sm flex-1">{n.nudge}</span>
+                <span className="text-[var(--text-primary)] text-sm flex-1">{n.nudge}</span>
                 {n.technique && (
-                  <span className="text-xs text-gray-500 bg-gray-700 rounded px-2 py-0.5">
+                  <span className="text-[10px] text-[var(--text-faint)] bg-[var(--bg-elevated)] rounded-full px-2 py-0.5">
                     {n.technique}
                   </span>
                 )}
@@ -344,13 +326,13 @@ export default function LiveCoachingPanel() {
         </div>
       )}
 
-      {/* Live transcript */}
+      {/* Transcript */}
       {transcript && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 mb-2">
+          <h3 className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium mb-2">
             Live Transcript
           </h3>
-          <div className="bg-gray-800/50 rounded-lg p-3 max-h-48 overflow-y-auto text-sm text-gray-300 leading-relaxed">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl p-4 max-h-48 overflow-y-auto text-sm text-[var(--text-secondary)] leading-relaxed">
             {transcript}
           </div>
         </div>
