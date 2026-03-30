@@ -57,17 +57,17 @@ describe("POST /api/practice", () => {
     expect(data.result.alternatives).toHaveLength(1);
   });
 
-  it("handles roleplay drill (non-structured)", async () => {
+  it("handles roleplay drill with coaching feedback", async () => {
     mockAuthSession();
     mockAnthropicCreate.mockResolvedValue({
-      content: [{ type: "text", text: "Look, I appreciate the pitch, but we're happy with our current vendor." }],
+      content: [{ type: "text", text: '{"buyerResponse":"Look, I appreciate the pitch, but we\'re happy with our current vendor.","feedback":null,"tip":null}' }],
     });
 
     const res = await POST(
       mockJsonRequest({ drillType: "roleplay", userInput: "Tell me about your pain points" })
     );
     const data = await readJson(res);
-    expect(data.result.counterpartResponse).toBeTruthy();
+    expect(data.result.buyerResponse).toBeTruthy();
   });
 
   it("saves session when saveSession provided", async () => {

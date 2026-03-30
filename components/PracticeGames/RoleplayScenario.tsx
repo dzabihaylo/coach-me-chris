@@ -9,6 +9,12 @@ interface Message {
   content: string;
 }
 
+interface RoleplayResult {
+  buyerResponse: string;
+  feedback: string | null;
+  tip: string | null;
+}
+
 const HINTS = [
   'Try: "It seems like switching costs are a real concern."',
   'Mirror: repeat their last 3 words with a slight upward tone.',
@@ -27,6 +33,8 @@ export default function RoleplayScenario() {
   const [hintIdx, setHintIdx] = useState(0);
   const [showHint, setShowHint] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<RoleplayResult | null>(null);
+  const [showCoach, setShowCoach] = useState(false);
 
   const sendMessage = useCallback(
     async (input: string, currentMessages: Message[]) => {
@@ -47,10 +55,12 @@ export default function RoleplayScenario() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "API error");
-        const response: string = data.result?.counterpartResponse || data.result || "...";
+        const parsed: RoleplayResult = data.result;
+        const response = parsed.buyerResponse || "...";
         setMessages([...newMessages, { role: "assistant", content: response }]);
+        setResult(parsed);
+        setShowCoach(false);
 
-        // Speak Alex's response
         await voice.speak(response);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to get response");
@@ -85,8 +95,10 @@ export default function RoleplayScenario() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
-      const response: string = data.result?.counterpartResponse || "Hello, I appreciate you reaching out...";
+      const parsed: RoleplayResult = data.result;
+      const response = parsed.buyerResponse || "Hello, I appreciate you reaching out...";
       setMessages([{ role: "assistant", content: response }]);
+      setResult(parsed);
 
       await voice.speak(response);
     } catch (e) {
@@ -113,6 +125,8 @@ export default function RoleplayScenario() {
     setTextInput("");
     setStarted(false);
     setShowHint(false);
+    setResult(null);
+    setShowCoach(false);
   };
 
   return (
@@ -173,6 +187,28 @@ export default function RoleplayScenario() {
               </div>
             )}
           </div>
+
+          {result?.feedback && (
+            showCoach ? (
+              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-sm text-[var(--text-secondary)] animate-fade-up">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-indigo-400 font-semibold text-xs">Coach:</span>
+                  <button onClick={() => setShowCoach(false)} className="text-[10px] text-[var(--text-faint)] hover:text-[var(--text-muted)]">Hide</button>
+                </div>
+                {result.feedback}
+                {result.tip && (
+                  <p className="text-[var(--text-muted)] text-xs mt-1 italic">{result.tip}</p>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCoach(true)}
+                className="text-xs text-[var(--text-faint)] hover:text-indigo-400 transition-colors"
+              >
+                Show coach feedback
+              </button>
+            )
+          )}
 
           <VoiceControls
             isListening={voice.isListening}

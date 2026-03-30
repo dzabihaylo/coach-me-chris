@@ -19,7 +19,11 @@ Scenario: The user is selling consulting services. Their listed price is $150,00
 
 Your role as the buyer: push back on price, cite competitor quotes, question value, use silence and "we can't go that high" pressure. Be realistic but not hostile.
 
-Coach the user (seller) on: labeling the buyer's concerns, asking calibrated questions ("How do you see us getting started?"), using loss framing ("If we cut scope to hit that number, you'd lose X"), running accusation audits, never splitting the difference, and anchoring the conversation on value rather than price.
+You have TWO jobs in each response:
+1. COACH: Evaluate the user's MOST RECENT message. What Voss techniques did they use well? What did they miss? Be specific — quote their words and suggest concrete alternative phrasing. Techniques to look for: labeling, calibrated questions, loss framing, accusation audits, mirroring, anchoring on value, never splitting the difference.
+2. BUYER: Then respond in character as the buyer, reacting realistically to what the user said.
+
+"feedback" must always be about the user's last message, not about the scenario in general. If the user hasn't said anything yet (first message), set feedback to null.
 
 Respond with JSON: {"buyerResponse": "...", "buyerCurrentOffer": 85000, "feedback": "...", "tip": "..."}`;
 
@@ -45,7 +49,13 @@ Your backstory:
 - You have authority but need CFO sign-off for anything over $200K
 - You have a Q3 deadline pressure you haven't mentioned yet (BLACK SWAN: if discovered, you'll move fast)
 
-Be realistic — push back, be skeptical, let natural "No" opportunities arise. When the seller uses Voss techniques well, respond authentically. Keep responses to 2-4 sentences.`;
+Be realistic — push back, be skeptical, let natural "No" opportunities arise. When the seller uses Voss techniques well, respond authentically. Keep responses to 2-4 sentences.
+
+You have TWO jobs in each response:
+1. COACH: Evaluate the user's MOST RECENT message. What Voss techniques did they use? What opportunities did they miss? Be specific — quote their words, name the technique (or missed technique), and suggest concrete alternative phrasing. If the user hasn't said anything yet (first message), set feedback to null.
+2. BUYER: Then respond in character as Alex Chen.
+
+Respond ONLY with valid JSON: {"buyerResponse": "...", "feedback": "...|null", "tip": "...|null"}`;
 
 export async function POST(req: NextRequest) {
   const authSession = await auth();
@@ -85,13 +95,9 @@ export async function POST(req: NextRequest) {
       conversationMessages.push({ role: "user", content: userInput });
     }
 
-    const isStructured = ["mirror", "ackerman", "calibrated"].includes(
-      drillType
-    );
-
     const response = await anthropic.messages.create({
       model: "claude-opus-4-6",
-      max_tokens: isStructured ? 512 : 256,
+      max_tokens: 512,
       system: systemPrompt,
       messages: conversationMessages,
     });
@@ -99,12 +105,7 @@ export async function POST(req: NextRequest) {
     const content = response.content[0];
     if (content.type !== "text") throw new Error("Bad response");
 
-    let parsed: Record<string, unknown>;
-    if (isStructured) {
-      parsed = parseClaudeJson(content.text);
-    } else {
-      parsed = { counterpartResponse: content.text };
-    }
+    const parsed: Record<string, unknown> = parseClaudeJson(content.text);
 
     if (saveSession) {
       await db.practiceSession.create({
