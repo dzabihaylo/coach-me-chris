@@ -105,7 +105,13 @@ export async function POST(req: NextRequest) {
     const content = response.content[0];
     if (content.type !== "text") throw new Error("Bad response");
 
-    const parsed: Record<string, unknown> = parseClaudeJson(content.text);
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = parseClaudeJson(content.text);
+    } catch {
+      // Fallback: if JSON parsing fails, treat as plain-text buyer/counterpart response
+      parsed = { buyerResponse: content.text, counterpartResponse: content.text, feedback: null, tip: null };
+    }
 
     if (saveSession) {
       await db.practiceSession.create({
