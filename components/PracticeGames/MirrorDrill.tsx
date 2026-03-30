@@ -24,6 +24,7 @@ export default function MirrorDrill() {
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCoach, setShowCoach] = useState(false);
 
   const sendMirror = useCallback(
     async (input: string, currentMessages: Message[]) => {
@@ -47,6 +48,7 @@ export default function MirrorDrill() {
         setScore((s) => ({ correct: s.correct + (parsed.mirrorCorrect ? 1 : 0), total: s.total + 1 }));
         setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse }]);
         setResult(parsed);
+        setShowCoach(false);
 
         // Speak the counterpart's response
         await voice.speak(parsed.counterpartResponse);
@@ -175,17 +177,37 @@ export default function MirrorDrill() {
           </div>
 
           {result && result.feedback && (
-            <div
-              className={`rounded-xl p-3 text-sm border ${
-                result.mirrorCorrect
-                  ? "bg-emerald-500/8 border-emerald-500/15 text-emerald-300"
-                  : result.mirrorCorrect === false
-                    ? "bg-red-500/8 border-red-500/15 text-red-300"
-                    : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)]"
-              }`}
-            >
-              {result.mirrorCorrect === true && "✓ "}{result.mirrorCorrect === false && "✗ "}
-              {result.feedback}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                {result.mirrorCorrect === true && (
+                  <span className="text-emerald-400 text-sm font-semibold">✓ Good mirror</span>
+                )}
+                {result.mirrorCorrect === false && (
+                  <span className="text-red-400 text-sm font-semibold">✗ Not quite</span>
+                )}
+                {!showCoach && (
+                  <button
+                    onClick={() => setShowCoach(true)}
+                    className="text-xs text-[var(--text-faint)] hover:text-blue-400 transition-colors ml-auto"
+                  >
+                    Show feedback
+                  </button>
+                )}
+              </div>
+              {showCoach && (
+                <div
+                  className={`rounded-xl p-3 text-sm border animate-fade-up ${
+                    result.mirrorCorrect
+                      ? "bg-emerald-500/8 border-emerald-500/15 text-emerald-300"
+                      : result.mirrorCorrect === false
+                        ? "bg-red-500/8 border-red-500/15 text-red-300"
+                        : "bg-[var(--bg-card)] border-[var(--border-default)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  {result.feedback}
+                  <button onClick={() => setShowCoach(false)} className="text-[10px] text-[var(--text-faint)] hover:text-[var(--text-muted)] ml-2">Hide</button>
+                </div>
+              )}
             </div>
           )}
 

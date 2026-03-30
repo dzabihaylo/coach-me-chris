@@ -20,6 +20,7 @@ export default function AckermanDrill() {
   const [result, setResult] = useState<DrillResult | null>(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCoach, setShowCoach] = useState(false);
 
   const sendResponse = useCallback(
     async (userMsg: string, currentMessages: typeof messages) => {
@@ -41,6 +42,7 @@ export default function AckermanDrill() {
         const parsed: DrillResult = data.result;
         setMessages([...newMessages, { role: "assistant", content: parsed.buyerResponse }]);
         setResult(parsed);
+        setShowCoach(false);
 
         await voice.speak(parsed.buyerResponse);
       } catch (e) {
@@ -171,13 +173,25 @@ export default function AckermanDrill() {
           </div>
 
           {result?.feedback && (
-            <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-sm text-[var(--text-secondary)]">
-              <span className="text-pink-400 font-semibold text-xs block mb-1">Coach:</span>
-              {result.feedback}
-              {result.tip && (
-                <p className="text-[var(--text-muted)] text-xs mt-1 italic">{result.tip}</p>
-              )}
-            </div>
+            showCoach ? (
+              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-sm text-[var(--text-secondary)] animate-fade-up">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-pink-400 font-semibold text-xs">Coach:</span>
+                  <button onClick={() => setShowCoach(false)} className="text-[10px] text-[var(--text-faint)] hover:text-[var(--text-muted)]">Hide</button>
+                </div>
+                {result.feedback}
+                {result.tip && (
+                  <p className="text-[var(--text-muted)] text-xs mt-1 italic">{result.tip}</p>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCoach(true)}
+                className="text-xs text-[var(--text-faint)] hover:text-pink-400 transition-colors"
+              >
+                Show coach feedback
+              </button>
+            )
           )}
 
           <VoiceControls
