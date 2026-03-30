@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 import VoiceControls from "@/components/shared/VoiceControls";
+import ChatMessage from "@/components/shared/ChatMessage";
 
 interface DrillResult {
   buyerResponse: string;
@@ -44,7 +45,7 @@ export default function AckermanDrill() {
         setResult(parsed);
         setShowCoach(false);
 
-        await voice.speak(parsed.buyerResponse);
+
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to get response");
       }
@@ -138,19 +139,15 @@ export default function AckermanDrill() {
         <div className="space-y-3">
           <div className="space-y-3 max-h-64 overflow-y-auto">
             {messages.map((m, i) => (
-              <div
+              <ChatMessage
                 key={i}
-                className={`rounded-xl p-3 text-sm ${
-                  m.role === "assistant"
-                    ? "bg-[var(--bg-elevated)] text-[var(--text-primary)] border-l-2 border-pink-500"
-                    : "bg-[var(--bg-card)] text-[var(--text-secondary)] border-l-2 border-emerald-500 ml-8"
-                }`}
-              >
-                <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium block mb-1">
-                  {m.role === "assistant" ? "Buyer" : "You (Seller)"}
-                </span>
-                {m.content}
-              </div>
+                role={m.role}
+                content={m.content}
+                label={m.role === "assistant" ? "Buyer" : "You (Seller)"}
+                accentColor="pink"
+                speak={voice.speak}
+                ttsSupported={voice.ttsSupported}
+              />
             ))}
             {loading && (
               <div className="bg-[var(--bg-elevated)] rounded-xl p-3 text-sm text-[var(--text-muted)] animate-pulse">
