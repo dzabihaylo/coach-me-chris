@@ -27,9 +27,9 @@ const DRILLS: {
   },
   {
     id: "ackerman",
-    label: "Ackerman",
+    label: "Price Defense",
     icon: TrendingDown,
-    desc: "65% → 85% → 95% → 100% concession ladder",
+    desc: "Defend your price against a buyer grinding you down",
     accent: "text-pink-400",
     bg: "hover:bg-pink-500/5 border-pink-500/20",
   },

@@ -4,32 +4,24 @@ import { useState, useCallback } from "react";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 import VoiceControls from "@/components/shared/VoiceControls";
 
-interface AckermanResult {
-  sellerResponse: string;
-  sellerCurrentPrice: number;
+interface DrillResult {
+  buyerResponse: string;
+  buyerCurrentOffer: number;
   feedback: string;
   tip: string;
 }
 
-const TARGET = 80000;
-const ASKING = 100000;
-const ANCHORS = [
-  { label: "65% anchor", price: 65000, note: "Your first offer — anchor very low" },
-  { label: "85% move", price: 85000, note: "Big concession after they push back" },
-  { label: "95% nudge", price: 95000, note: "Smaller step, showing resistance" },
-  { label: "Final offer", price: 80000, note: "Exact target with odd number + non-monetary item" },
-];
+const YOUR_PRICE = 150000;
 
 export default function AckermanDrill() {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AckermanResult | null>(null);
-  const [offerStep, setOfferStep] = useState(0);
+  const [result, setResult] = useState<DrillResult | null>(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sendOffer = useCallback(
+  const sendResponse = useCallback(
     async (userMsg: string, currentMessages: typeof messages) => {
       if (!userMsg.trim() || loading) return;
       const newMessages = [...currentMessages, { role: "user" as const, content: userMsg }];
@@ -46,13 +38,11 @@ export default function AckermanDrill() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "API error");
-        const parsed: AckermanResult = data.result;
-        setMessages([...newMessages, { role: "assistant", content: parsed.sellerResponse }]);
+        const parsed: DrillResult = data.result;
+        setMessages([...newMessages, { role: "assistant", content: parsed.buyerResponse }]);
         setResult(parsed);
-        setOfferStep((s) => Math.min(s + 1, ANCHORS.length - 1));
 
-        // Speak seller response
-        await voice.speak(parsed.sellerResponse);
+        await voice.speak(parsed.buyerResponse);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to get response");
       }
@@ -64,7 +54,7 @@ export default function AckermanDrill() {
 
   const voice = useVoiceChat({
     onSpeechResult: (transcript) => {
-      sendOffer(transcript, messages);
+      sendResponse(transcript, messages);
     },
     voiceHint: "Daniel",
     rate: 0.95,
@@ -81,29 +71,25 @@ export default function AckermanDrill() {
         body: JSON.stringify({
           drillType: "ackerman",
           messages: [],
-          userInput: `The scenario is starting. You are the seller asking $${ASKING.toLocaleString()}. Open with your pitch.`,
+          userInput: `The scenario is starting. You are the buyer. The seller (me) is offering consulting services at $${YOUR_PRICE.toLocaleString()}. Open as the buyer — express interest but immediately push back on price. Use an Ackerman anchor.`,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
-      const parsed: AckermanResult = data.result;
-      setMessages([{ role: "assistant", content: parsed.sellerResponse }]);
+      const parsed: DrillResult = data.result;
+      setMessages([{ role: "assistant", content: parsed.buyerResponse }]);
       setResult(parsed);
 
-      await voice.speak(parsed.sellerResponse);
+      await voice.speak(parsed.buyerResponse);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start drill");
     }
     setLoading(false);
   };
 
-  const makeQuickOffer = (price: number) => {
-    sendOffer(`I'd like to offer $${price.toLocaleString()}.`, messages);
-  };
-
   const handleTextSubmit = () => {
     if (textInput.trim()) {
-      sendOffer(textInput, messages);
+      sendResponse(textInput, messages);
     }
   };
 
@@ -113,45 +99,40 @@ export default function AckermanDrill() {
     setMessages([]);
     setTextInput("");
     setResult(null);
-    setOfferStep(0);
     setStarted(false);
   };
 
   return (
     <div className="space-y-4">
       <div className="bg-[var(--bg-card)] rounded-2xl p-4 border border-[var(--border-default)]">
-        <h3 className="text-[var(--text-primary)] font-semibold mb-2">Ackerman Bargaining Drill</h3>
+        <h3 className="text-[var(--text-primary)] font-semibold mb-2">Price Defense Drill</h3>
         <div className="text-sm text-[var(--text-muted)] space-y-1">
           <p>
-            Scenario: You&apos;re buying enterprise software.{" "}
-            <span className="text-[var(--text-primary)]">Asking price: ${ASKING.toLocaleString()}</span>. Your{" "}
-            <span className="text-emerald-400">target: ${TARGET.toLocaleString()}</span>.
+            You&apos;re selling consulting services at{" "}
+            <span className="text-emerald-400 font-semibold">${YOUR_PRICE.toLocaleString()}</span>.
+            The buyer will use Ackerman tactics to grind you down.
           </p>
           <p className="text-xs text-[var(--text-faint)]">
-            Strategy: 65% → 85% → 95% → 100% (each concession smaller, add odd
-            numbers + non-monetary items at end)
+            Defend your price using Voss techniques: label their concerns, ask calibrated questions,
+            frame in terms of loss, and anchor on value — not price.
           </p>
         </div>
       </div>
 
-      {/* Offer ladder */}
-      <div className="grid grid-cols-4 gap-2">
-        {ANCHORS.map((a, i) => (
-          <div
-            key={i}
-            className={`rounded-xl p-2 text-center border text-xs ${
-              i < offerStep
-                ? "border-[var(--border-default)] bg-[var(--bg-card)]/30 text-[var(--text-faint)]"
-                : i === offerStep
-                  ? "border-pink-500 bg-pink-900/20 text-pink-300"
-                  : "border-[var(--border-default)] bg-[var(--bg-card)]/20 text-[var(--text-faint)]"
-            }`}
-          >
-            <div className="font-bold">${a.price.toLocaleString()}</div>
-            <div>{a.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* Buyer's current offer indicator */}
+      {result?.buyerCurrentOffer && started && (
+        <div className="flex items-center gap-3 bg-[var(--bg-card)] rounded-xl p-3 border border-[var(--border-subtle)]">
+          <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium">Buyer&apos;s offer</span>
+          <span className="text-pink-400 font-bold tabular-nums">${result.buyerCurrentOffer.toLocaleString()}</span>
+          <span className="text-[var(--text-faint)] text-xs">vs your ${YOUR_PRICE.toLocaleString()}</span>
+          <span className={`text-xs font-medium ml-auto ${
+            result.buyerCurrentOffer >= YOUR_PRICE * 0.9 ? "text-emerald-400" :
+            result.buyerCurrentOffer >= YOUR_PRICE * 0.75 ? "text-amber-400" : "text-red-400"
+          }`}>
+            {Math.round((result.buyerCurrentOffer / YOUR_PRICE) * 100)}% of ask
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>
@@ -162,7 +143,7 @@ export default function AckermanDrill() {
           onClick={startDrill}
           className="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-500 hover:to-pink-400 text-[var(--text-primary)] py-3 rounded-xl font-semibold transition-colors"
         >
-          Start Ackerman Drill
+          Start Price Defense Drill
         </button>
       ) : (
         <div className="space-y-3">
@@ -177,14 +158,14 @@ export default function AckermanDrill() {
                 }`}
               >
                 <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium block mb-1">
-                  {m.role === "assistant" ? "Seller" : "You"}
+                  {m.role === "assistant" ? "Buyer" : "You (Seller)"}
                 </span>
                 {m.content}
               </div>
             ))}
             {loading && (
               <div className="bg-[var(--bg-elevated)] rounded-xl p-3 text-sm text-[var(--text-muted)] animate-pulse">
-                Seller thinking...
+                Buyer thinking...
               </div>
             )}
           </div>
@@ -199,24 +180,6 @@ export default function AckermanDrill() {
             </div>
           )}
 
-          {/* Quick offer buttons */}
-          <div className="flex flex-wrap gap-2">
-            {ANCHORS.map((a, i) => (
-              <button
-                key={i}
-                onClick={() => makeQuickOffer(a.price)}
-                disabled={loading}
-                className={`text-xs px-3 py-1.5 rounded-xl border transition-colors disabled:opacity-50 ${
-                  i === offerStep
-                    ? "border-pink-500 bg-pink-900/30 text-pink-300 hover:bg-pink-900/50"
-                    : "border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]/80"
-                }`}
-              >
-                Offer ${a.price.toLocaleString()}
-              </button>
-            ))}
-          </div>
-
           <VoiceControls
             isListening={voice.isListening}
             isSpeaking={voice.isSpeaking}
@@ -227,7 +190,7 @@ export default function AckermanDrill() {
             textInput={textInput}
             onTextInputChange={setTextInput}
             onTextSubmit={handleTextSubmit}
-            textPlaceholder="Make your offer..."
+            textPlaceholder="Defend your price..."
             disabled={loading}
             accentColor="pink"
           />
