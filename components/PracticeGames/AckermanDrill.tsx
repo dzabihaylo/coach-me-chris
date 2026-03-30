@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 import VoiceControls from "@/components/shared/VoiceControls";
 import ChatMessage from "@/components/shared/ChatMessage";
+import FeedbackWidget from "@/components/shared/FeedbackWidget";
 
 interface DrillResult {
   buyerResponse: string;
@@ -15,13 +16,14 @@ interface DrillResult {
 const YOUR_PRICE = 150000;
 
 export default function AckermanDrill() {
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string; latencyMs?: number }[]>([]);
   const [textInput, setTextInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DrillResult | null>(null);
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCoach, setShowCoach] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const sendResponse = useCallback(
     async (userMsg: string, currentMessages: typeof messages) => {
@@ -33,18 +35,19 @@ export default function AckermanDrill() {
       setError(null);
 
       try {
+        const t0 = Date.now();
         const res = await fetch("/api/practice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ drillType: "ackerman", messages: newMessages, userInput: null }),
         });
+        const latencyMs = Date.now() - t0;
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "API error");
         const parsed: DrillResult = data.result;
-        setMessages([...newMessages, { role: "assistant", content: parsed.buyerResponse }]);
+        setMessages([...newMessages, { role: "assistant", content: parsed.buyerResponse, latencyMs }]);
         setResult(parsed);
         setShowCoach(false);
-
 
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to get response");
@@ -68,6 +71,7 @@ export default function AckermanDrill() {
     setLoading(true);
     setError(null);
     try {
+      const t0 = Date.now();
       const res = await fetch("/api/practice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,13 +81,12 @@ export default function AckermanDrill() {
           userInput: `The scenario is starting. You are the buyer. The seller (me) is offering consulting services at $${YOUR_PRICE.toLocaleString()}. Open as the buyer — express interest but immediately push back on price. Use an Ackerman anchor.`,
         }),
       });
+      const latencyMs = Date.now() - t0;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
       const parsed: DrillResult = data.result;
-      setMessages([{ role: "assistant", content: parsed.buyerResponse }]);
+      setMessages([{ role: "assistant", content: parsed.buyerResponse, latencyMs }]);
       setResult(parsed);
-
-      await voice.speak(parsed.buyerResponse);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start drill");
     }
@@ -96,13 +99,23 @@ export default function AckermanDrill() {
     }
   };
 
-  const reset = () => {
+  const requestReset = () => {
+    if (messages.length > 1) {
+      setShowFeedback(true);
+    } else {
+      doReset();
+    }
+  };
+
+  const doReset = () => {
     voice.stopSpeaking();
     voice.stopListening();
     setMessages([]);
     setTextInput("");
     setResult(null);
     setStarted(false);
+    setShowCoach(false);
+    setShowFeedback(false);
   };
 
   return (
@@ -147,6 +160,7 @@ export default function AckermanDrill() {
                 accentColor="pink"
                 speak={voice.speak}
                 ttsSupported={voice.ttsSupported}
+                latencyMs={m.latencyMs}
               />
             ))}
             {loading && (
@@ -208,11 +222,15 @@ export default function AckermanDrill() {
             accentColor="pink"
           />
 
+          {showFeedback && (
+            <FeedbackWidget context="practice:ackerman" onDismiss={doReset} />
+          )}
+
           <button
-            onClick={reset}
+            onClick={requestReset}
             className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
           >
-            Reset
+            End Session
           </button>
         </div>
       )}

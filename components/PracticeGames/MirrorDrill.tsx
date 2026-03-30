@@ -4,10 +4,12 @@ import { useState, useCallback } from "react";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 import VoiceControls from "@/components/shared/VoiceControls";
 import ChatMessage from "@/components/shared/ChatMessage";
+import FeedbackWidget from "@/components/shared/FeedbackWidget";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  latencyMs?: number;
 }
 
 interface MirrorResult {
@@ -26,6 +28,7 @@ export default function MirrorDrill() {
   const [started, setStarted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCoach, setShowCoach] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const sendMirror = useCallback(
     async (input: string, currentMessages: Message[]) => {
@@ -38,16 +41,18 @@ export default function MirrorDrill() {
       setError(null);
 
       try {
+        const t0 = Date.now();
         const res = await fetch("/api/practice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ drillType: "mirror", messages: newMessages, userInput: null }),
         });
+        const latencyMs = Date.now() - t0;
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "API error");
         const parsed: MirrorResult = data.result;
         setScore((s) => ({ correct: s.correct + (parsed.mirrorCorrect ? 1 : 0), total: s.total + 1 }));
-        setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse }]);
+        setMessages([...newMessages, { role: "assistant", content: parsed.counterpartResponse, latencyMs }]);
         setResult(parsed);
         setShowCoach(false);
 
@@ -73,6 +78,7 @@ export default function MirrorDrill() {
     setLoading(true);
     setError(null);
     try {
+      const t0 = Date.now();
       const res = await fetch("/api/practice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -82,11 +88,12 @@ export default function MirrorDrill() {
           userInput: "Give me your opening statement as the counterpart in a vendor negotiation. Say 1-2 sentences.",
         }),
       });
+      const latencyMs = Date.now() - t0;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
       const parsed: MirrorResult = data.result;
       const opening = parsed.counterpartResponse || "We've been looking at your platform for a few months now, but honestly we're pretty comfortable with our current setup.";
-      setMessages([{ role: "assistant", content: opening }]);
+      setMessages([{ role: "assistant", content: opening, latencyMs }]);
       setResult(parsed);
 
     } catch (e) {
@@ -101,7 +108,15 @@ export default function MirrorDrill() {
     }
   };
 
-  const reset = () => {
+  const requestReset = () => {
+    if (messages.length > 1) {
+      setShowFeedback(true);
+    } else {
+      doReset();
+    }
+  };
+
+  const doReset = () => {
     voice.stopSpeaking();
     voice.stopListening();
     setMessages([]);
@@ -109,6 +124,8 @@ export default function MirrorDrill() {
     setResult(null);
     setScore({ correct: 0, total: 0 });
     setStarted(false);
+    setShowCoach(false);
+    setShowFeedback(false);
   };
 
   return (
@@ -160,6 +177,7 @@ export default function MirrorDrill() {
                 accentColor="blue"
                 speak={voice.speak}
                 ttsSupported={voice.ttsSupported}
+                latencyMs={m.latencyMs}
               />
             ))}
             {loading && (
@@ -219,11 +237,15 @@ export default function MirrorDrill() {
             accentColor="blue"
           />
 
+          {showFeedback && (
+            <FeedbackWidget context="practice:mirror" onDismiss={doReset} />
+          )}
+
           <button
-            onClick={reset}
+            onClick={requestReset}
             className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
           >
-            Reset
+            End Session
           </button>
         </div>
       )}

@@ -25,6 +25,7 @@ model User {
   practiceSessions PracticeSession[]
   liveSessions     LiveSession[]
   granolaMeetings  GranolaMeeting[]
+  feedback         UserFeedback[]
 }
 
 model Account {
@@ -168,4 +169,21 @@ model LiveSession {
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ─── User feedback ─────────────────────────────────────────────────────────
+
+model UserFeedback {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  rating    Int      // 1-5 stars
+  comment   String?  // freeform text
+  context   String   // "practice:roleplay", "practice:ackerman", "review", "live", etc.
+  sessionId String?  // optional link to a PracticeSession or LiveSession
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([context])
 }

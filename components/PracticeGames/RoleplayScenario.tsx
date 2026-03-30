@@ -4,10 +4,12 @@ import { useState, useCallback } from "react";
 import { useVoiceChat } from "@/hooks/useVoiceChat";
 import VoiceControls from "@/components/shared/VoiceControls";
 import ChatMessage from "@/components/shared/ChatMessage";
+import FeedbackWidget from "@/components/shared/FeedbackWidget";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  latencyMs?: number;
 }
 
 interface RoleplayResult {
@@ -36,6 +38,7 @@ export default function RoleplayScenario() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RoleplayResult | null>(null);
   const [showCoach, setShowCoach] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const sendMessage = useCallback(
     async (input: string, currentMessages: Message[]) => {
@@ -49,16 +52,18 @@ export default function RoleplayScenario() {
       setError(null);
 
       try {
+        const t0 = Date.now();
         const res = await fetch("/api/practice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ drillType: "roleplay", messages: newMessages, userInput: null }),
         });
+        const latencyMs = Date.now() - t0;
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "API error");
         const parsed: RoleplayResult = data.result;
         const response = parsed.buyerResponse || "...";
-        setMessages([...newMessages, { role: "assistant", content: response }]);
+        setMessages([...newMessages, { role: "assistant", content: response, latencyMs }]);
         setResult(parsed);
         setShowCoach(false);
 
@@ -84,6 +89,7 @@ export default function RoleplayScenario() {
     setLoading(true);
     setError(null);
     try {
+      const t0 = Date.now();
       const res = await fetch("/api/practice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,11 +99,12 @@ export default function RoleplayScenario() {
           userInput: "The vendor has just connected to the call. Give your opening 2-3 sentence response as the skeptical buyer Alex Chen.",
         }),
       });
+      const latencyMs = Date.now() - t0;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "API error");
       const parsed: RoleplayResult = data.result;
       const response = parsed.buyerResponse || "Hello, I appreciate you reaching out...";
-      setMessages([{ role: "assistant", content: response }]);
+      setMessages([{ role: "assistant", content: response, latencyMs }]);
       setResult(parsed);
 
       await voice.speak(response);
@@ -118,7 +125,15 @@ export default function RoleplayScenario() {
     setHintIdx((h) => (h + 1) % HINTS.length);
   };
 
-  const reset = () => {
+  const requestReset = () => {
+    if (messages.length > 1) {
+      setShowFeedback(true);
+    } else {
+      doReset();
+    }
+  };
+
+  const doReset = () => {
     voice.stopSpeaking();
     voice.stopListening();
     setMessages([]);
@@ -127,6 +142,7 @@ export default function RoleplayScenario() {
     setShowHint(false);
     setResult(null);
     setShowCoach(false);
+    setShowFeedback(false);
   };
 
   return (
@@ -175,6 +191,7 @@ export default function RoleplayScenario() {
                 accentColor="indigo"
                 speak={voice.speak}
                 ttsSupported={voice.ttsSupported}
+                latencyMs={m.latencyMs}
               />
             ))}
             {loading && (
@@ -221,6 +238,10 @@ export default function RoleplayScenario() {
             accentColor="indigo"
           />
 
+          {showFeedback && (
+            <FeedbackWidget context="practice:roleplay" onDismiss={doReset} />
+          )}
+
           <div className="flex gap-2">
             <button
               onClick={getHint}
@@ -229,10 +250,10 @@ export default function RoleplayScenario() {
               Hint
             </button>
             <button
-              onClick={reset}
+              onClick={requestReset}
               className="text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] px-3 py-1.5 rounded-xl transition-colors"
             >
-              Reset
+              End Session
             </button>
           </div>
         </div>
