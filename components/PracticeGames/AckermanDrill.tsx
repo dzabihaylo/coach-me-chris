@@ -121,20 +121,7 @@ export default function AckermanDrill() {
         </div>
       </div>
 
-      {/* Buyer's current offer indicator */}
-      {result?.buyerCurrentOffer && started && (
-        <div className="flex items-center gap-3 bg-[var(--bg-card)] rounded-xl p-3 border border-[var(--border-subtle)]">
-          <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium">Buyer&apos;s offer</span>
-          <span className="text-pink-400 font-bold tabular-nums">${result.buyerCurrentOffer.toLocaleString()}</span>
-          <span className="text-[var(--text-faint)] text-xs">vs your ${YOUR_PRICE.toLocaleString()}</span>
-          <span className={`text-xs font-medium ml-auto ${
-            result.buyerCurrentOffer >= YOUR_PRICE * 0.9 ? "text-emerald-400" :
-            result.buyerCurrentOffer >= YOUR_PRICE * 0.75 ? "text-amber-400" : "text-red-400"
-          }`}>
-            {Math.round((result.buyerCurrentOffer / YOUR_PRICE) * 100)}% of ask
-          </span>
-        </div>
-      )}
+      {/* Buyer's current offer indicator — hidden until coach is revealed */}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-red-400 text-sm">{error}</div>
@@ -174,15 +161,30 @@ export default function AckermanDrill() {
 
           {result?.feedback && (
             showCoach ? (
-              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-sm text-[var(--text-secondary)] animate-fade-up">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-pink-400 font-semibold text-xs">Coach:</span>
-                  <button onClick={() => setShowCoach(false)} className="text-[10px] text-[var(--text-faint)] hover:text-[var(--text-muted)]">Hide</button>
-                </div>
-                {result.feedback}
-                {result.tip && (
-                  <p className="text-[var(--text-muted)] text-xs mt-1 italic">{result.tip}</p>
+              <div className="space-y-2 animate-fade-up">
+                {result.buyerCurrentOffer > 0 && (
+                  <div className="flex items-center gap-3 bg-[var(--bg-card)] rounded-xl p-3 border border-[var(--border-subtle)]">
+                    <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider font-medium">Buyer&apos;s offer</span>
+                    <span className="text-pink-400 font-bold tabular-nums">${result.buyerCurrentOffer.toLocaleString()}</span>
+                    <span className="text-[var(--text-faint)] text-xs">vs your ${YOUR_PRICE.toLocaleString()}</span>
+                    <span className={`text-xs font-medium ml-auto ${
+                      result.buyerCurrentOffer >= YOUR_PRICE * 0.9 ? "text-emerald-400" :
+                      result.buyerCurrentOffer >= YOUR_PRICE * 0.75 ? "text-amber-400" : "text-red-400"
+                    }`}>
+                      {Math.round((result.buyerCurrentOffer / YOUR_PRICE) * 100)}% of ask
+                    </span>
+                  </div>
                 )}
+                <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-xl p-3 text-sm text-[var(--text-secondary)]">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-pink-400 font-semibold text-xs">Coach:</span>
+                    <button onClick={() => setShowCoach(false)} className="text-[10px] text-[var(--text-faint)] hover:text-[var(--text-muted)]">Hide</button>
+                  </div>
+                  {result.feedback}
+                  {result.tip && (
+                    <p className="text-[var(--text-muted)] text-xs mt-1 italic">{result.tip}</p>
+                  )}
+                </div>
               </div>
             ) : (
               <button
