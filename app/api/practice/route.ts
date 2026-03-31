@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { parseClaudeJson } from "@/lib/safe-json";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const MIRROR_SYSTEM = `You are a negotiation training partner for a mirroring drill. The user is practicing Chris Voss's mirroring technique — repeating the last 2-3 words of what someone says to encourage elaboration.
 
@@ -17,13 +17,13 @@ const ACKERMAN_SYSTEM = `You are a negotiation training partner for a price defe
 
 Scenario: The user is selling consulting services. Their listed price is $150,000. The buyer (you) has an internal budget of $120,000 but will try to negotiate as low as possible using Ackerman tactics: anchoring at $85,000, then moving to $100,000, then $110,000, then $120,000.
 
-Your role as the buyer: push back on price, cite competitor quotes, question value, use silence and "we can't go that high" pressure. Be realistic but not hostile.
+Your role as the buyer: push back on price, cite competitor quotes, question value, use silence and "we can't go that high" pressure. Be realistic but not hostile. Keep buyer responses to 2-3 sentences max — brief and natural, like a real call.
 
 You have TWO jobs in each response:
 1. COACH: Evaluate the user's MOST RECENT message. What Voss techniques did they use well? What did they miss? Be specific — quote their words and suggest concrete alternative phrasing. Techniques to look for: labeling, calibrated questions, loss framing, accusation audits, mirroring, anchoring on value, never splitting the difference.
 2. BUYER: Then respond in character as the buyer, reacting realistically to what the user said.
 
-"feedback" must always be about the user's last message, not about the scenario in general. If the user hasn't said anything yet (first message), set feedback to null.
+"feedback" must always be about the user's last message, not about the scenario in general. Keep feedback to 1-2 sentences. If the user hasn't said anything yet (first message), set feedback to null.
 
 Respond with JSON: {"buyerResponse": "...", "buyerCurrentOffer": 85000, "feedback": "...", "tip": "..."}`;
 
@@ -52,8 +52,8 @@ Your backstory:
 Be realistic — push back, be skeptical, let natural "No" opportunities arise. When the seller uses Voss techniques well, respond authentically. Keep responses to 2-4 sentences.
 
 You have TWO jobs in each response:
-1. COACH: Evaluate the user's MOST RECENT message. What Voss techniques did they use? What opportunities did they miss? Be specific — quote their words, name the technique (or missed technique), and suggest concrete alternative phrasing. If the user hasn't said anything yet (first message), set feedback to null.
-2. BUYER: Then respond in character as Alex Chen.
+1. COACH: Evaluate the user's MOST RECENT message. What Voss techniques did they use or miss? Be specific but concise — 1-2 sentences max. If the user hasn't said anything yet (first message), set feedback to null.
+2. BUYER: Then respond in character as Alex Chen. Keep to 2-3 sentences.
 
 Respond ONLY with valid JSON: {"buyerResponse": "...", "feedback": "...|null", "tip": "...|null"}`;
 
@@ -96,8 +96,8 @@ export async function POST(req: NextRequest) {
     }
 
     const response = await anthropic.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 512,
+      model: "claude-sonnet-4-6",
+      max_tokens: 1024,
       system: systemPrompt,
       messages: conversationMessages,
     });
