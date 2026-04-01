@@ -42,7 +42,17 @@ describe("parseClaudeJson", () => {
     expect(parseClaudeJson(input)).toEqual({ a: 1 });
   });
 
-  it("throws on invalid JSON", () => {
-    expect(() => parseClaudeJson("not json at all")).toThrow();
+  it("extracts JSON from fences with trailing text", () => {
+    const input = '```json\n{"score":7}\n```\n\n**Why this works:** Because reasons.';
+    expect(parseClaudeJson(input)).toEqual({ score: 7 });
+  });
+
+  it("extracts JSON object from mixed text", () => {
+    const input = 'Here is the result:\n{"a":1, "b":2}\nHope that helps!';
+    expect(parseClaudeJson(input)).toEqual({ a: 1, b: 2 });
+  });
+
+  it("throws on text with no JSON", () => {
+    expect(() => parseClaudeJson("no json here at all")).toThrow();
   });
 });
