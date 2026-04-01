@@ -95,11 +95,16 @@ export async function POST(req: NextRequest) {
       conversationMessages.push({ role: "user", content: userInput });
     }
 
+    // Strip to only role+content — extra fields (e.g. latencyMs) break the API
+    const cleanMessages = conversationMessages.map(
+      (m: { role: string; content: string }) => ({ role: m.role, content: m.content })
+    );
+
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
       system: systemPrompt,
-      messages: conversationMessages,
+      messages: cleanMessages,
     });
 
     const content = response.content[0];
@@ -129,6 +134,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[practice]", message);
-    return Response.json({ error: "Practice session failed" }, { status: 500 });
+    return Response.json({ error: `Practice session failed: ${message}` }, { status: 500 });
   }
 }
