@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { anthropic, AFTER_ACTION_REVIEW_PROMPT } from "@/lib/claude";
+import { anthropic, buildAfterActionReviewPrompt } from "@/lib/claude";
+import { buildAdaptiveContext } from "@/lib/voss-prompts";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
@@ -39,10 +40,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const adaptiveContext = await buildAdaptiveContext(userId);
+    const systemPrompt = buildAfterActionReviewPrompt(adaptiveContext);
+
     const message = await anthropic.messages.create({
       model: "claude-opus-4-6",
       max_tokens: 4096,
-      system: AFTER_ACTION_REVIEW_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: "user",

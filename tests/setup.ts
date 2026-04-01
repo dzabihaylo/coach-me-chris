@@ -27,6 +27,7 @@ const mockDb = {
   practiceSession: {
     create: vi.fn(),
     findMany: vi.fn().mockResolvedValue([]),
+    count: vi.fn().mockResolvedValue(0),
   },
   liveSession: {
     create: vi.fn(),
@@ -61,12 +62,22 @@ vi.mock("@anthropic-ai/sdk", () => {
   };
 });
 
+// ---------- Mock: @/lib/voss-prompts ----------
+vi.mock("@/lib/voss-prompts", () => ({
+  VOSS_FRAMEWORK: "mock-voss-framework",
+  buildAdaptiveContext: vi.fn().mockResolvedValue("USER LEVEL: Beginner"),
+}));
+
 // ---------- Mock: @/lib/claude ----------
 vi.mock("@/lib/claude", () => ({
   anthropic: { messages: { create: mockAnthropicCreate } },
+  buildLiveCoachingPrompt: vi.fn().mockReturnValue("mock-live-prompt"),
+  buildAfterActionReviewPrompt: vi.fn().mockReturnValue("mock-review-prompt"),
   LIVE_COACHING_SYSTEM_PROMPT: "mock-live-prompt",
   AFTER_ACTION_REVIEW_PROMPT: "mock-review-prompt",
   VOSS_DIMENSIONS: [],
+  VOSS_FRAMEWORK: "mock-voss-framework",
+  buildAdaptiveContext: vi.fn().mockResolvedValue("USER LEVEL: Beginner"),
 }));
 
 // ---------- Mock: @/lib/rate-limit (passthrough by default) ----------

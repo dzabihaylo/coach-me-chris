@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { anthropic, LIVE_COACHING_SYSTEM_PROMPT } from "@/lib/claude";
+import { anthropic, buildLiveCoachingPrompt } from "@/lib/claude";
+import { buildAdaptiveContext } from "@/lib/voss-prompts";
 import { auth } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { parseClaudeJson } from "@/lib/safe-json";
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     return Response.json(EMPTY, { status: 401 });
   }
 
-  const { allowed } = rateLimit(session.user.id, 60, 60_000); // 60 calls/min (coaching polls every 25s)
+  const { allowed } = rateLimit(session.user.id, 60, 60_000);
   if (!allowed) return Response.json(EMPTY, { status: 429 });
 
   const { transcript } = await req.json();
@@ -23,14 +24,16 @@ export async function POST(req: NextRequest) {
     return Response.json(EMPTY);
   }
 
-  // Cap input length
   const trimmed = transcript.slice(-3000);
 
   try {
+    const adaptiveContext = await buildAdaptiveContext(session.user.id);
+    const systemPrompt = buildLiveCoachingPrompt(adaptiveContext);
+
     const message = await anthropic.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 100,
-      system: LIVE_COACHING_SYSTEM_PROMPT,
+      model: "claude-sonnet-4-6",
+      max_tokens: 150,
+      system: systemPrompt,
       messages: [
         {
           role: "user",
