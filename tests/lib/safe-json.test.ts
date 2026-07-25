@@ -52,6 +52,17 @@ describe("parseClaudeJson", () => {
     expect(parseClaudeJson(input)).toEqual({ a: 1, b: 2 });
   });
 
+  it("stops at the matching brace when trailing prose contains braces", () => {
+    const input = 'Result: {"score":7}\nNote: wrap {placeholders} in braces.';
+    expect(parseClaudeJson(input)).toEqual({ score: 7 });
+  });
+
+  it("ignores braces inside string values", () => {
+    expect(parseClaudeJson('{"tip":"say {this} exactly"}')).toEqual({
+      tip: "say {this} exactly",
+    });
+  });
+
   it("throws on text with no JSON", () => {
     expect(() => parseClaudeJson("no json here at all")).toThrow();
   });
