@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 // Unmock so we test the real module
 vi.unmock("@/lib/voss");

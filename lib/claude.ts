@@ -121,6 +121,10 @@ Respond ONLY with valid JSON in this exact structure:
 }`;
 }
 
-// Legacy exports for backwards compatibility during migration
-export const LIVE_COACHING_SYSTEM_PROMPT = buildLiveCoachingPrompt("");
-export const AFTER_ACTION_REVIEW_PROMPT = buildAfterActionReviewPrompt("");
+// Extract the first text block from a model response. Newer models (Sonnet 5,
+// Opus 4.8) can return thinking blocks before the text, so content[0] is no
+// longer guaranteed to be the text — find it explicitly.
+export function firstText(content: Anthropic.ContentBlock[]): string | null {
+  const block = content.find((b): b is Anthropic.TextBlock => b.type === "text");
+  return block?.text ?? null;
+}

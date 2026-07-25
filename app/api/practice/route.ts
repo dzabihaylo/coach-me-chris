@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { anthropic } from "@/lib/claude";
+import { anthropic, firstText } from "@/lib/claude";
 import { VOSS_FRAMEWORK, buildAdaptiveContext } from "@/lib/voss-prompts";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -137,20 +137,23 @@ export async function POST(req: NextRequest) {
     );
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-5",
       max_tokens: 1024,
+      // Thinking off: keep roleplay turns snappy and preserve the token budget
+      // for the reply (Sonnet 5 runs adaptive thinking by default).
+      thinking: { type: "disabled" },
       system: systemPrompt,
       messages: cleanMessages,
     });
 
-    const content = response.content[0];
-    if (content.type !== "text") throw new Error("Bad response");
+    const text = firstText(response.content);
+    if (!text) throw new Error("Bad response");
 
     let parsed: Record<string, unknown>;
     try {
-      parsed = parseClaudeJson(content.text);
+      parsed = parseClaudeJson(text);
     } catch {
-      parsed = { buyerResponse: content.text, counterpartResponse: content.text, feedback: null, tip: null };
+      parsed = { buyerResponse: text, counterpartResponse: text, feedback: null, tip: null };
     }
 
     if (saveSession) {

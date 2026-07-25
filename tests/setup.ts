@@ -48,6 +48,10 @@ const mockDb = {
     update: vi.fn(),
     count: vi.fn().mockResolvedValue(5),
   },
+  userFeedback: {
+    create: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
+  },
 };
 
 vi.mock("@/lib/db", () => ({ db: mockDb }));
@@ -73,8 +77,9 @@ vi.mock("@/lib/claude", () => ({
   anthropic: { messages: { create: mockAnthropicCreate } },
   buildLiveCoachingPrompt: vi.fn().mockReturnValue("mock-live-prompt"),
   buildAfterActionReviewPrompt: vi.fn().mockReturnValue("mock-review-prompt"),
-  LIVE_COACHING_SYSTEM_PROMPT: "mock-live-prompt",
-  AFTER_ACTION_REVIEW_PROMPT: "mock-review-prompt",
+  // Real extraction logic so tests exercise the text-block lookup.
+  firstText: (content: Array<{ type: string; text?: string }>) =>
+    content.find((b) => b.type === "text")?.text ?? null,
   VOSS_DIMENSIONS: [],
   VOSS_FRAMEWORK: "mock-voss-framework",
   buildAdaptiveContext: vi.fn().mockResolvedValue("USER LEVEL: Beginner"),

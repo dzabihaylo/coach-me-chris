@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { anthropic, buildAfterActionReviewPrompt } from "@/lib/claude";
+import { anthropic, buildAfterActionReviewPrompt, firstText } from "@/lib/claude";
 import { buildAdaptiveContext } from "@/lib/voss-prompts";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildAfterActionReviewPrompt(adaptiveContext);
 
     const message = await anthropic.messages.create({
-      model: "claude-opus-4-6",
+      model: "claude-opus-4-8",
       max_tokens: 4096,
       system: systemPrompt,
       messages: [
@@ -55,15 +55,15 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
+    const text = firstText(message.content);
+    if (!text) {
       return Response.json({ error: "Unexpected response from analysis" }, { status: 500 });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let feedback: any;
     try {
-      feedback = parseClaudeJson(content.text);
+      feedback = parseClaudeJson(text);
     } catch {
       return Response.json({ error: "Failed to parse analysis results" }, { status: 500 });
     }
