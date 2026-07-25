@@ -117,7 +117,8 @@ describe("PUT /api/settings", () => {
     expect(res.status).toBe(200);
 
     const updateCall = mockDb.user.update.mock.calls[0][0];
-    expect(updateCall.data.granolaApiKey).toBe("my-key-123");
+    // Stored encrypted (mock crypto prefixes "enc:"); trimmed before encrypting.
+    expect(updateCall.data.granolaApiKey).toBe("enc:my-key-123");
   });
 
   it("clears Granola key when empty", async () => {
@@ -149,7 +150,7 @@ describe("PUT /api/settings", () => {
 
     const updateCall = mockDb.user.update.mock.calls[0][0];
     expect(updateCall.data.name).toBe("Dave");
-    expect(updateCall.data.granolaApiKey).toBe("abc123");
+    expect(updateCall.data.granolaApiKey).toBe("enc:abc123");
   });
 
   it("returns 400 when no valid fields provided", async () => {

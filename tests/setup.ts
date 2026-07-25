@@ -90,5 +90,11 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn().mockReturnValue({ allowed: true, remaining: 99 }),
 }));
 
+// ---------- Mock: @/lib/crypto (reversible, no AUTH_SECRET needed) ----------
+vi.mock("@/lib/crypto", () => ({
+  encryptSecret: (s: string) => "enc:" + s,
+  decryptSecret: (s: string) => (s.startsWith("enc:") ? s.slice(4) : s),
+}));
+
 // Export references for tests to manipulate
 export { mockDb, mockAnthropicCreate };

@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { decryptSecret } from "@/lib/crypto";
 
 const GRANOLA_API = "https://public-api.granola.ai/v1";
 
@@ -10,7 +11,7 @@ async function getGranolaKey(userId: string): Promise<string | null> {
     where: { id: userId },
     select: { granolaApiKey: true },
   });
-  return user?.granolaApiKey ?? null;
+  return user?.granolaApiKey ? decryptSecret(user.granolaApiKey) : null;
 }
 
 export async function GET() {

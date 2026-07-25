@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { encryptSecret, decryptSecret } from "@/lib/crypto";
 
 export async function GET() {
   const session = await auth();
@@ -29,7 +30,7 @@ export async function GET() {
     createdAt: user.createdAt,
     hasGranolaKey: !!user.granolaApiKey,
     granolaKeyPrefix: user.granolaApiKey
-      ? user.granolaApiKey.slice(0, 8) + "..."
+      ? decryptSecret(user.granolaApiKey).slice(0, 8) + "..."
       : null,
   });
 }
@@ -60,7 +61,7 @@ export async function PUT(req: Request) {
       body.granolaApiKey.trim()
         ? body.granolaApiKey.trim()
         : null;
-    updates.granolaApiKey = key;
+    updates.granolaApiKey = key ? encryptSecret(key) : null;
   }
 
   if (Object.keys(updates).length === 0) {
